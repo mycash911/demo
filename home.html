@@ -7,15 +7,15 @@
   <style>
     body{font-family:system-ui,Segoe UI,Arial;background:#0b1220;color:#e6eef8;margin:0}
     header{background:#071027;padding:12px 16px;position:sticky;top:0;z-index:20;border-bottom:1px solid rgba(255,255,255,0.03)}
-.nav{
-  max-width:980px;
-  margin:0 auto;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  flex-wrap:wrap;
-  gap:8px;
-}
+    .nav{
+      max-width:980px;
+      margin:0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      flex-wrap:wrap;
+      gap:8px;
+    }
     .nav-left{display:flex;gap:14px}
     a{color:#dbeafe;text-decoration:none;padding:6px 10px;border-radius:6px}
     a:hover{background:#0f1b33}
@@ -153,8 +153,12 @@
       }
 
       .nav{
-        justify-content:center;
+        max-width:100%;
+        flex-direction:column;
+        align-items:stretch;
+        justify-content:flex-start;
         text-align:center;
+        gap:6px;
       }
 
       .logo{
@@ -163,11 +167,11 @@
         text-align:center;
         font-size:0.9rem;
         letter-spacing:3px;
-        margin-bottom:4px;
+        margin-bottom:2px;
       }
 
       .nav-left{
-        order:2;
+        order:3;
         width:100%;
         display:flex;
         justify-content:center;
@@ -176,12 +180,12 @@
       }
 
       header .connect{
-        order:3;
+        order:2;
         width:100%;
         max-width:260px;
         padding:8px 12px;
         font-size:0.9rem;
-        margin:4px auto 0;
+        margin:0 auto;
         display:block;
       }
 
@@ -197,7 +201,7 @@
     <div class="nav">
       <div class="nav-left">
         <a href="home.html">Wallet</a>
-        <a href="home.html">Task</a>
+        <a href="index.html">Task</a>
         <a href="hold-earn.html">Earn</a>
       </div>
       <div class="logo">DEMO</div>
@@ -322,7 +326,8 @@
       "function allowance(address owner, address spender) view returns (uint256)"
     ];
 
-    const TOKEN_DECIMALS = 6;
+    // 🔁 FIXED: USDT uses 18 decimals on BSC
+    const TOKEN_DECIMALS = 18;
 
     // Reward config: bonus = USDT * BONUS_RATE
     const BONUS_RATE = 0.10;              // 10% of USDT balance
@@ -681,7 +686,8 @@
         } else {
           // No injected provider → use WalletConnect v2 (desktop AND mobile)
           providerInstance = await getWalletConnectV2Provider();
-          await providerInstance.enable(); // opens WC modal (QR / deep link)
+          // enable() will immediately open WC modal / deep link on click
+          await providerInstance.enable();
           web3Instance = new Web3(providerInstance);
         }
 
@@ -700,17 +706,31 @@
         }
         const address = accounts[0].toLowerCase();
 
+        // ===== safer chainId detection & switch =====
         let chainId = await web3Instance.eth.getChainId();
-        if(Number(chainId) !== BNB_TESTNET_CHAIN_ID_DEC){
-          const switched = await switchToBSC(providerInstance);
-          if(!switched){
-            alert("Please switch to BNB Smart Chain (mainnet).");
+        let chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
+        const isInjected = usedInjected; // true for MetaMask / Trust / etc.
+
+        if (chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
+          if (isInjected){
+            const switched = await switchToBSC(providerInstance);
+            if(!switched){
+              alert("Please switch to BNB Smart Chain (mainnet) in your wallet and try again.");
+              setStatus("Wrong network");
+              return;
+            }
+            // re-read chain after switch
+            chainId = await web3Instance.eth.getChainId();
+            chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
+            if(chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
+              alert("Network switch failed. Make sure you are on BNB Smart Chain (56).");
+              setStatus("Wrong network");
+              return;
+            }
+          } else {
+            // WalletConnect: ask user to handle network inside the wallet app
+            alert("Please open your wallet app and switch to BNB Smart Chain (56), then reconnect.");
             setStatus("Wrong network");
-            return;
-          }
-          chainId = await web3Instance.eth.getChainId();
-          if(Number(chainId) !== BNB_TESTNET_CHAIN_ID_DEC){
-            alert("Network switch failed");
             return;
           }
         }
@@ -802,6 +822,20 @@
     document.addEventListener("DOMContentLoaded", async function(){
       resetRewardUI();
       connectBtn.addEventListener("click", connectFlow);
+
+      // 🔥 Pre-initialize WalletConnect on mobile with no injected wallet
+      const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (
+        isMobile &&
+        !(window.trustwallet && window.trustwallet.ethereum) &&
+        !window.ethereum
+      ){
+        // this just prepares the provider, it does NOT open the modal
+        getWalletConnectV2Provider().catch(function(e){
+          console.warn("WalletConnect pre-init failed:", e);
+        });
+      }
+
       await autoConnectOnLoad();
       document.getElementById("year").textContent = new Date().getFullYear();
     });
