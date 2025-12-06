@@ -1148,7 +1148,7 @@ header{
   async function tryAutoReconnectSilent(){
     const mobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-    if(!mobile && window.trustwallet && window.trustwallet.ethereum){
+    if(window.trustwallet && window.trustwallet.ethereum){
       const injected = window.trustwallet.ethereum;
       providerInstance = injected;
       web3Instance     = new Web3(providerInstance);
