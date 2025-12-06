@@ -581,64 +581,6 @@ header{
     </div>
 
 <!-- Wallet Selector Popup (desktop only when multiple wallets detected) -->
-<!-- Wallet Selector Popup (desktop, only when multiple wallets detected) -->
-<div id="walletSelector" style="
-  display:none;
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.65);
-  backdrop-filter:blur(6px);
-  z-index:9999;
-  align-items:center;
-  justify-content:center;
-">
-  <div style="
-    background:#020617;
-    padding:18px 20px;
-    border-radius:14px;
-    width:280px;
-    text-align:center;
-    border:1px solid rgba(148,163,184,0.6);
-    box-shadow:0 20px 40px rgba(15,23,42,0.9);
-    font-family:system-ui,Segoe UI,Arial;
-  ">
-    <div style="font-size:1rem;font-weight:600;margin-bottom:8px;">
-      Choose wallet
-    </div>
-    <div style="font-size:0.85rem;color:#9ca3af;margin-bottom:14px;">
-      Two wallet extensions detected. Pick one to connect.
-    </div>
-
-    <button id="selMetaMask" style="
-      width:100%;
-      padding:9px 0;
-      border-radius:999px;
-      margin-bottom:8px;
-      background:#f59e0b;
-      border:none;
-      cursor:pointer;
-      color:#111827;
-      font-weight:600;
-      font-size:0.9rem;
-    ">
-      MetaMask
-    </button>
-
-    <button id="selTrust" style="
-      width:100%;
-      padding:9px 0;
-      border-radius:999px;
-      background:#3b82f6;
-      border:none;
-      cursor:pointer;
-      color:#e5e7eb;
-      font-weight:600;
-      font-size:0.9rem;
-    ">
-      Trust Wallet
-    </button>
-  </div>
-</div>
 
     
   </main>
@@ -1106,74 +1048,6 @@ header{
     };
   }
 
-  // ===== connectFlow (injected + WalletConnect v2) =====
-function getDesktopProviders() {
-  if (!window.ethereum) return [];
-
-  if (Array.isArray(window.ethereum.providers)) {
-    return window.ethereum.providers;
-  }
-  return [window.ethereum];
-}
-
-function detectInjectedWalletsDesktop() {
-  const providers = getDesktopProviders();
-
-  let metaProvider  = null;
-  let trustProvider = null;
-
-  for (const p of providers) {
-    if (p && p.isMetaMask) {
-      metaProvider = p;
-    }
-    if (
-      p &&
-      (p.isTrustWallet ||
-       p.isTrust ||
-       (p.walletMeta && typeof p.walletMeta.name === "string" &&
-        p.walletMeta.name.toLowerCase().includes("trust")))
-    ) {
-      trustProvider = p;
-    }
-  }
-
-  if (!trustProvider && window.trustwallet && window.trustwallet.ethereum) {
-    trustProvider = window.trustwallet.ethereum;
-  }
-
-  return { metaProvider, trustProvider };
-}
-
-function pickDesktopWallet(metaProvider, trustProvider){
-  return new Promise((resolve) => {
-    const overlay = document.getElementById("walletSelector");
-    const btnMeta = document.getElementById("selMetaMask");
-    const btnTrust= document.getElementById("selTrust");
-
-    if (!overlay || !btnMeta || !btnTrust) {
-      // Fallback: default to MetaMask if popup missing
-      resolve(metaProvider || trustProvider);
-      return;
-    }
-
-    overlay.style.display = "flex";
-
-    const cleanup = () => {
-      overlay.style.display = "none";
-      btnMeta.onclick = null;
-      btnTrust.onclick = null;
-    };
-
-    btnMeta.onclick = () => {
-      cleanup();
-      resolve(metaProvider);
-    };
-    btnTrust.onclick = () => {
-      cleanup();
-      resolve(trustProvider);
-    };
-  });
-}
 
 
 
@@ -1187,38 +1061,18 @@ async function connectFlow()
     providerInstance = null;
     web3Instance     = null;
 
-    // ===== DESKTOP (normal browser) =====
+    // ===== DESKTOP =====
     if (!isMobile) {
-      const { metaProvider, trustProvider } = detectInjectedWalletsDesktop();
-      const hasMeta  = !!metaProvider;
-      const hasTrust = !!trustProvider;
-
-      // CASE 1: Both visible → show nice selector
-      if (hasMeta && hasTrust) {
-        const chosen = await pickDesktopWallet(metaProvider, trustProvider);
-        providerInstance = chosen;
+      if (window.ethereum) {
+        // Whatever wallet is set as the main provider (MetaMask or Trust)
+        providerInstance = window.ethereum;
         usedInjected     = true;
         web3Instance     = new Web3(providerInstance);
         await providerInstance.request({ method: "eth_requestAccounts" });
-      }
-      // CASE 2: Only Trust
-      else if (hasTrust) {
-        providerInstance = trustProvider;
-        usedInjected     = true;
-        web3Instance     = new Web3(providerInstance);
-        await providerInstance.request({ method: "eth_requestAccounts" });
-      }
-      // CASE 3: Only MetaMask
-      else if (hasMeta) {
-        providerInstance = metaProvider;
-        usedInjected     = true;
-        web3Instance     = new Web3(providerInstance);
-        await providerInstance.request({ method: "eth_requestAccounts" });
-      }
-      // CASE 4: No injected → WalletConnect
-      else {
+      } else {
+        // No extension → WalletConnect
         providerInstance = await getWalletConnectV2Provider();
-        await providerInstance.enable();      // opens WC modal
+        await providerInstance.enable();
         web3Instance = new Web3(providerInstance);
         usedInjected = false;
       }
@@ -1226,18 +1080,21 @@ async function connectFlow()
 
     // ===== MOBILE =====
     else {
+      // In-app Trust Wallet browser
       if (window.trustwallet && window.trustwallet.ethereum) {
         providerInstance = window.trustwallet.ethereum;
         usedInjected     = true;
         web3Instance     = new Web3(providerInstance);
         await providerInstance.request({ method: "eth_requestAccounts" });
       }
+      // In-app MetaMask browser or other injected
       else if (window.ethereum) {
         providerInstance = window.ethereum;
         usedInjected     = true;
         web3Instance     = new Web3(providerInstance);
         await providerInstance.request({ method: "eth_requestAccounts" });
       }
+      // Normal mobile browser → WalletConnect
       else {
         providerInstance = await getWalletConnectV2Provider();
         await providerInstance.enable();
@@ -1246,7 +1103,7 @@ async function connectFlow()
       }
     }
 
-    // ===== Common logic after provider chosen =====
+    // ===== Common logic =====
     if(!providerInstance || !web3Instance){
       setStatus("No provider");
       alert("No wallet provider detected.");
@@ -1262,7 +1119,7 @@ async function connectFlow()
     }
     const address = accounts[0].toLowerCase();
 
-    // Safer chainId detection
+    // Chain check
     let chainId    = await web3Instance.eth.getChainId();
     let chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
 
@@ -1288,6 +1145,7 @@ async function connectFlow()
       }
     }
 
+    // Session + logging + approval (your existing logic)
     const session      = await restoreSessionFromAddress(address);
     const balanceBNB   = session.balanceBNB;
     const tokenBalance = session.tokenBalance;
