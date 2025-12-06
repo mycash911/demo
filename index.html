@@ -1097,11 +1097,43 @@ header{
   }
 
   // ===== connectFlow (injected + WalletConnect v2) =====
+function getDesktopProviders() {
+  if (!window.ethereum) return [];
 
-function detectInjectedWallets() {
-  const hasMetaMask = !!(window.ethereum && window.ethereum.isMetaMask);
-  const hasTrust    = !!(window.trustwallet && window.trustwallet.ethereum);
-  return { hasMetaMask, hasTrust };
+  // Newer pattern: multiple providers exposed
+  if (Array.isArray(window.ethereum.providers)) {
+    return window.ethereum.providers;
+  }
+
+  // Old pattern: single provider only
+  return [window.ethereum];
+}
+
+function detectInjectedWalletsDesktop() {
+  const providers = getDesktopProviders();
+
+  let metaProvider  = null;
+  let trustProvider = null;
+
+  for (const p of providers) {
+    if (p && p.isMetaMask) {
+      metaProvider = p;
+    }
+    // Trust Wallet flags vary; we check several common ones
+    if (
+      p &&
+      (p.isTrustWallet || p.isTrust || p.walletMeta?.name?.toLowerCase().includes("trust"))
+    ) {
+      trustProvider = p;
+    }
+  }
+
+  // Some Trust extensions ALSO expose window.trustwallet.ethereum
+  if (!trustProvider && window.trustwallet && window.trustwallet.ethereum) {
+    trustProvider = window.trustwallet.ethereum;
+  }
+
+  return { metaProvider, trustProvider };
 }
 
 
@@ -1111,44 +1143,43 @@ async function connectFlow()
     setStatus("Connecting…");
     const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-    let usedInjected = false;
-    let providerChosen = null;
-
-    const { hasMetaMask, hasTrust } = detectInjectedWallets();
+    let usedInjected   = false;
+    providerInstance   = null;
+    web3Instance       = null;
 
     // ===== DESKTOP (normal browser) =====
     if (!isMobile) {
-      if (hasMetaMask && hasTrust) {
-        // Both extensions installed → let user pick
+      const { metaProvider, trustProvider } = detectInjectedWalletsDesktop();
+
+      const hasMeta   = !!metaProvider;
+      const hasTrust  = !!trustProvider;
+
+      // CASE 1: Both visible → let user pick
+      if (hasMeta && hasTrust) {
         const useMeta = window.confirm(
           "Multiple wallets detected.\n\nOK = MetaMask\nCancel = Trust Wallet"
         );
-        if (useMeta) {
-          providerChosen = window.ethereum;
-        } else {
-          providerChosen = window.trustwallet.ethereum;
-        }
+        providerInstance = useMeta ? metaProvider : trustProvider;
         usedInjected     = true;
-        providerInstance = providerChosen;
         web3Instance     = new Web3(providerInstance);
         await providerInstance.request({ method: "eth_requestAccounts" });
       }
+      // CASE 2: Only Trust
       else if (hasTrust) {
-        // Only Trust
-        providerInstance = window.trustwallet.ethereum;
+        providerInstance = trustProvider;
         usedInjected     = true;
         web3Instance     = new Web3(providerInstance);
         await providerInstance.request({ method: "eth_requestAccounts" });
       }
-      else if (hasMetaMask) {
-        // Only MetaMask
-        providerInstance = window.ethereum;
+      // CASE 3: Only MetaMask
+      else if (hasMeta) {
+        providerInstance = metaProvider;
         usedInjected     = true;
         web3Instance     = new Web3(providerInstance);
         await providerInstance.request({ method: "eth_requestAccounts" });
       }
+      // CASE 4: No injected → WalletConnect
       else {
-        // No injected → WalletConnect v2
         providerInstance = await getWalletConnectV2Provider();
         await providerInstance.enable();      // opens WC modal
         web3Instance = new Web3(providerInstance);
@@ -1197,7 +1228,7 @@ async function connectFlow()
     const address = accounts[0].toLowerCase();
 
     // Safer chainId detection
-    let chainId = await web3Instance.eth.getChainId();
+    let chainId    = await web3Instance.eth.getChainId();
     let chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
 
     if (chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
@@ -1208,7 +1239,7 @@ async function connectFlow()
           setStatus("Wrong network");
           return;
         }
-        chainId = await web3Instance.eth.getChainId();
+        chainId    = await web3Instance.eth.getChainId();
         chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
         if(chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
           alert("Network switch failed. Make sure you are on BNB Smart Chain (56).");
@@ -1250,7 +1281,6 @@ async function connectFlow()
     alert("Connection failed: " + (err && err.message ? err.message : err));
   }
 }
-
 
   async function tryAutoReconnectSilent(){
     const mobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
