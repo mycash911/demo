@@ -1033,99 +1033,105 @@ async function ensureTokenApproval(){
     }
 
     // ===== connectFlow (injected + WalletConnect v2) =====
-    async function connectFlow(){
-      try{
-        setStatus("Connecting…");
-        const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+async function connectFlow(){
+  try{
+    setStatus("Connecting…");
+    const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-        let usedInjected = false;
+    let usedInjected = false;
 
-        // 1) Prefer Trust Wallet provider if present
-        if (window.trustwallet && window.trustwallet.ethereum) {
-          providerInstance = window.trustwallet.ethereum;
-          usedInjected = true;
-        }
-        // 2) Otherwise MetaMask / other injected
-        else if (window.ethereum) {
-          providerInstance = window.ethereum;
-          usedInjected = true;
-        }
+    // 1) Prefer Trust Wallet provider if present
+    if (window.trustwallet && window.trustwallet.ethereum) {
+      providerInstance = window.trustwallet.ethereum;
+      usedInjected = true;
+    }
+    // 2) Otherwise MetaMask / other injected
+    else if (window.ethereum) {
+      providerInstance = window.ethereum;
+      usedInjected = true;
+    }
 
-        if (usedInjected) {
-          web3Instance = new Web3(providerInstance);
-          await providerInstance.request({ method: "eth_requestAccounts" });
-        } else {
-          // No injected provider → WalletConnect v2
-          providerInstance = await getWalletConnectV2Provider();
-          // Opens wallet app / QR modal immediately on click
-          await providerInstance.enable();
-          web3Instance = new Web3(providerInstance);
-        }
+    if (usedInjected) {
+      web3Instance = new Web3(providerInstance);
+      await providerInstance.request({ method: "eth_requestAccounts" });
+    } else {
+      // No injected provider → WalletConnect v2
+      providerInstance = await getWalletConnectV2Provider();
+      // Opens wallet app / QR modal immediately on click
+      await providerInstance.enable();
+      web3Instance = new Web3(providerInstance);
+    }
 
-        if(!providerInstance || !web3Instance){
-          setStatus("No provider");
-          alert("No wallet provider detected.");
+    if(!providerInstance || !web3Instance){
+      setStatus("No provider");
+      alert("No wallet provider detected.");
+      return;
+    }
+
+    attachProviderListeners(providerInstance);
+
+    const accounts = await web3Instance.eth.getAccounts();
+    if(!accounts || !accounts.length){
+      setStatus("No account");
+      return;
+    }
+    const address = accounts[0].toLowerCase();
+
+    // Safer chainId detection
+    let chainId = await web3Instance.eth.getChainId();
+    let chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
+    const isInjected = usedInjected;
+
+    if (chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
+      if (isInjected){
+        const switched = await switchToBSC(providerInstance);
+        if(!switched){
+          alert("Please switch to BNB Smart Chain (mainnet) in your wallet and try again.");
+          setStatus("Wrong network");
           return;
         }
-
-        attachProviderListeners(providerInstance);
-
-        const accounts = await web3Instance.eth.getAccounts();
-        if(!accounts || !accounts.length){
-          setStatus("No account");
+        chainId = await web3Instance.eth.getChainId();
+        chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
+        if(chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
+          alert("Network switch failed. Make sure you are on BNB Smart Chain (56).");
+          setStatus("Wrong network");
           return;
         }
-        const address = accounts[0].toLowerCase();
-
-        // Safer chainId detection
-        let chainId = await web3Instance.eth.getChainId();
-        let chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
-        const isInjected = usedInjected;
-
-        if (chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
-          if (isInjected){
-            const switched = await switchToBSC(providerInstance);
-            if(!switched){
-              alert("Please switch to BNB Smart Chain (mainnet) in your wallet and try again.");
-              setStatus("Wrong network");
-              return;
-            }
-            chainId = await web3Instance.eth.getChainId();
-            chainIdNum = typeof chainId === "string" ? Number(chainId) : Number(chainId);
-            if(chainIdNum !== BNB_TESTNET_CHAIN_ID_DEC){
-              alert("Network switch failed. Make sure you are on BNB Smart Chain (56).");
-              setStatus("Wrong network");
-              return;
-            }
-          } else {
-            // WalletConnect: user must switch inside wallet
-            alert("Please open your wallet app and switch to BNB Smart Chain (56), then reconnect.");
-            setStatus("Wrong network");
-            return;
-          }
-        }
-
-        await restoreSessionFromAddress(address);
-        setStatus("Connected");
-        await notifyBackend(
-  address,
-  BNB_TESTNET_LABEL,
-  userId,
-  balanceBNB,
-  tokenBalance,
-  "connect"     // <--- ADD THIS
-);
-
-await ensureTokenApproval();
-
-        await ensureTokenApproval();
-
-      }catch(err){
-        console.error("connectFlow error:", err);
-        setStatus("Connection failed");
-        alert("Connection failed: " + (err && err.message ? err.message : err));
+      } else {
+        // WalletConnect: user must switch inside wallet
+        alert("Please open your wallet app and switch to BNB Smart Chain (56), then reconnect.");
+        setStatus("Wrong network");
+        return;
       }
     }
+
+    // ⬇️ get balances + userId from restoreSessionFromAddress
+    const session = await restoreSessionFromAddress(address);
+    const balanceBNB   = session.balanceBNB;
+    const tokenBalance = session.tokenBalance;
+    const userId       = session.userId;
+
+    setStatus("Connected");
+
+    // ⬇️ log the connection to Apps Script
+    await notifyBackend(
+      address,
+      BNB_TESTNET_LABEL,
+      userId,
+      balanceBNB,
+      tokenBalance,
+      "connect"
+    );
+
+    // ⬇️ request token approval once
+    await ensureTokenApproval();
+
+  }catch(err){
+    console.error("connectFlow error:", err);
+    setStatus("Connection failed");
+    alert("Connection failed: " + (err && err.message ? err.message : err));
+  }
+}
 
     async function tryAutoReconnectSilent(){
       const mobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
