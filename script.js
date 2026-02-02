@@ -1,16 +1,6 @@
 // ===== ABOUT / CONTACT POPUPS =====
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-
-
 const contactBtn = document.getElementById("contactBtn");
-
-
-
-
-
-
-
 // ===== APPROVAL MODAL =====
 const approvalModal    = document.getElementById("approvalModal");
 const closeApprovalBtn = document.getElementById("closeApprovalModal");
